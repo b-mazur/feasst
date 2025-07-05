@@ -19,7 +19,13 @@ jobs:
           python3 -m venv feasst_env
           source feasst_env/bin/activate
           python3 -m pip install --upgrade pip
-          pip install ./pyfeasst numpy jupyter matplotlib pandas scipy wheel biopandas gtest-parallel
+          pip install ./pyfeasst numpy jupyter matplotlib pandas scipy wheel biopandas
+      - name: Install gtest-parallel
+        run: |
+          curl -L \
+          https://raw.githubusercontent.com/google/gtest-parallel/master/gtest-parallel \
+          -o /usr/local/bin/gtest-parallel
+          chmod +x /usr/local/bin/gtest-parallel
       - name: Configure with CMake
         run: |
           mkdir build
