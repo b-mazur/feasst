@@ -22,10 +22,7 @@ jobs:
           pip install ./pyfeasst numpy jupyter matplotlib pandas scipy wheel biopandas
       - name: Install gtest-parallel
         run: |
-          curl -L \
-          https://raw.githubusercontent.com/google/gtest-parallel/master/gtest-parallel \
-          -o /usr/local/bin/gtest-parallel
-          chmod +x /usr/local/bin/gtest-parallel
+          pip install git+https://github.com/google/gtest-parallel.git
       - name: Configure with CMake
         run: |
           mkdir build
