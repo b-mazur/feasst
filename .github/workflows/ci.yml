@@ -24,8 +24,8 @@ jobs:
         run: |
           curl -L \
           https://raw.githubusercontent.com/google/gtest-parallel/master/gtest-parallel \
-          -o /usr/local/bin/gtest-parallel
-          chmod +x /usr/local/bin/gtest-parallel
+          -o /home/runner/software/gtest-parallel/gtest-parallel
+          chmod +x /home/runner/software/gtest-parallel/gtest-parallel
       - name: Configure with CMake
         run: |
           mkdir build
