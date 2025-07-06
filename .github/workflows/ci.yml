@@ -22,6 +22,7 @@ jobs:
           pip install ./pyfeasst numpy jupyter matplotlib pandas scipy wheel biopandas
       - name: Install gtest-parallel
         run: |
+          mkdir -p /home/runner/software/gtest-parallel/
           curl -L \
           https://raw.githubusercontent.com/google/gtest-parallel/master/gtest-parallel \
           -o /home/runner/software/gtest-parallel/gtest-parallel
