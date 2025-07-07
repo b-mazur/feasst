@@ -138,7 +138,7 @@ double energy_av4(const int macro, const MonteCarlo& mc) {
 }
 
 TEST(Clones, lj_fh_LONG) {
-  Clones clones = make_clones(5, 1, 1);
+  Clones clones = make_clones(6, 1, 1);
   Clones clones2 = test_serialize(clones);
   clones2.initialize_and_run_until_complete(
     {{"omp_batch", str(1e5)}, {"ln_prob_file", "tmp/clones_fh.txt"}});
