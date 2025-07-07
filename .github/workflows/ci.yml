@@ -23,10 +23,9 @@ jobs:
       - name: Install gtest-parallel
         run: |
           mkdir -p /home/runner/software/gtest-parallel/
-          curl -L \
-          https://raw.githubusercontent.com/google/gtest-parallel/master/gtest-parallel \
-          -o /home/runner/software/gtest-parallel/gtest-parallel
+          git clone https://github.com/google/gtest-parallel.git /home/runner/software/gtest-parallel
           chmod +x /home/runner/software/gtest-parallel/gtest-parallel
+          export PYTHONPATH=/home/runner/software/gtest-parallel:$PYTHONPATH
       - name: Configure with CMake
         run: |
           mkdir build
