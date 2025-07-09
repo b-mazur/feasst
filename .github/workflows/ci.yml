@@ -37,6 +37,7 @@ jobs:
           make install -j$(nproc)
       - name: Run tests
         run: |
+          export OMP_NUM_THREADS=2
           bash dev/tools/build_and_test.sh
       - name: Upload logs
         if: failure()
