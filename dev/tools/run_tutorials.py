@@ -25,11 +25,12 @@ def grep_file(filename):
         if all([x not in str(filename.parent) for x in exclude]):
             with cd.cd(filename.parent):
                 print("Grepping:", filename, "in", filename.parent)
-                subprocess.call("grep \"Error\\|Assertion\" tutorial_log"+str(filename.name)+".txt >> tutorial_failures.txt", shell=True, executable='/bin/bash')
-                subprocess.call("grep \"FAILED (fa\" " + str(filename) +" >> tutorial_failures.txt", shell=True, executable='/bin/bash')
-                subprocess.call("grep \"Error\" " + str(filename) +" >> tutorial_failures.txt", shell=True, executable='/bin/bash')
-                subprocess.call("grep \"ERROR\" " + str(filename) +" >> tutorial_failures.txt", shell=True, executable='/bin/bash')
-                subprocess.call("grep \"feasst::CustomException\" " + str(filename) +" >> tutorial_failures.txt", shell=True, executable='/bin/bash')
+                logf = "tutorial_log" + str(filename.name) + ".txt"
+                subprocess.call("grep -H \"Error\\|Assertion\" " + logf + " >> tutorial_failures.txt", shell=True, executable='/bin/bash')
+                subprocess.call("grep -H \"FAILED (fa\" " + logf + " >> tutorial_failures.txt", shell=True, executable='/bin/bash')
+                subprocess.call("grep -H \"Error\" " + logf + " >> tutorial_failures.txt", shell=True, executable='/bin/bash')
+                subprocess.call("grep -H \"ERROR\" " + logf + " >> tutorial_failures.txt", shell=True, executable='/bin/bash')
+                subprocess.call("grep -H \"feasst::CustomException\" " + logf + " >> tutorial_failures.txt", shell=True, executable='/bin/bash')
 
 #for filename in Path(feasst.install_dir()).rglob('*.ipynb'): run_file(filename)
 pool = multiprocessing.Pool(4)
