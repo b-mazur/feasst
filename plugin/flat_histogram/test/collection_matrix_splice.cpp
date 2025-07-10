@@ -58,13 +58,14 @@ std::unique_ptr<MonteCarlo> monte_carlo2(const int thread, const int min, const 
 //  mc->add(MakeLogAndMovie({{"trials_per_write", str(trials_per)},
 //    {"output_file", "tmp/clones" + str(thread)}}));
   mc->add(MakeCriteriaUpdater({{"trials_per_update", str(trials_per)}}));
+  const std::string prefix = "tmp/clone_splice";
   mc->add(MakeCriteriaWriter({
     {"trials_per_write", str(trials_per)},
-    {"output_file", "tmp/clones" + str(thread) + "_crit.txt"}}));
+    {"output_file", prefix + str(thread) + "_crit.txt"}}));
   mc->set(MakeCheckpoint({{"num_hours", "0.0001"},
-    {"checkpoint_file", "tmp/clone" + str(thread) + ".fst"}}));
+    {"checkpoint_file", prefix + str(thread) + ".fst"}}));
   mc->add(MakeEnergy({
-    {"output_file", "tmp/clone_energy" + str(thread)},
+    {"output_file", prefix + "_energy" + str(thread)},
     {"trials_per_update", "1"},
     {"trials_per_write", str(trials_per)},
     {"multistate", "true"}}));
@@ -159,8 +160,8 @@ TEST(CollectionMatrixSplice, lj_fh_LONG) {
   EXPECT_NEAR(clones2.clone(1).analyze(en_index[0]).analyze(4).accumulator().average(), -0.29619201333333334, 0.006*3);
 //  INFO(SeekAnalyze().reference("Energy", clones2.clone(1)).accumulator().average());
 
-  MakeCheckpoint({{"checkpoint_file", "tmp/clones.fst"}})->write(clones2);
-  auto clones3 = MakeCollectionMatrixSplice("tmp/clones.fst");
+  MakeCheckpoint({{"checkpoint_file", "tmp/clones_splice.fst"}})->write(clones2);
+  auto clones3 = MakeCollectionMatrixSplice("tmp/clones_splice.fst");
 }
 
 }  // namespace feasst

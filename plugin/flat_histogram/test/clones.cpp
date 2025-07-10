@@ -51,13 +51,14 @@ std::unique_ptr<MonteCarlo> monte_carlo(const int thread, const int min, const i
 //  mc->add(MakeLogAndMovie({{"trials_per_write", str(trials_per)},
 //    {"output_file", "tmp/clones" + str(thread)}}));
   mc->add(MakeCriteriaUpdater({{"trials_per_update", str(trials_per)}}));
+  const std::string prefix = "tmp/clone_clones";
   mc->add(MakeCriteriaWriter({
     {"trials_per_write", str(trials_per)},
-    {"output_file", "tmp/clones" + str(thread) + "_crit.txt"}}));
+    {"output_file", prefix + str(thread) + "_crit.txt"}}));
   mc->set(MakeCheckpoint({{"num_hours", "0.0001"},
-    {"checkpoint_file", "tmp/clone" + str(thread) + ".fst"}}));
+    {"checkpoint_file", prefix + str(thread) + ".fst"}}));
   mc->add(MakeEnergy({
-    {"output_file", "tmp/clone_energy" + str(thread)},
+    {"output_file", prefix + "_energy" + str(thread)},
     {"trials_per_update", "1"},
     {"trials_per_write", str(trials_per)},
     {"multistate", "true"}}));
@@ -145,13 +146,13 @@ TEST(Clones, lj_fh_LONG) {
   for (int sweeps = 20; sweeps <= 1000; sweeps+=10) {
   //for (int sweeps = 20; sweeps <= 100; sweeps+=10) {
     DEBUG("sweeps: " << sweeps);
-    auto clones3 = MakeClones("tmp/clone", 2, 0, ".fst");
+    auto clones3 = MakeClones("tmp/clone_clones", 2, 0, ".fst");
     clones3->set_cycles_to_complete(sweeps);
     clones3->initialize_and_run_until_complete(
       {{"omp_batch", str(1e5)}, {"ln_prob_file", "tmp/clones_fh.txt"}});
   }
 
-  auto clones4 = MakeClones("tmp/clone", 2, 0, ".fst");
+  auto clones4 = MakeClones("tmp/clone_clones", 2, 0, ".fst");
   const LnProbability lnpi = clones4->ln_prob();
   EXPECT_NEAR(lnpi.value(0), -14.037373358321800000, 0.04);
   EXPECT_NEAR(lnpi.value(1), -10.050312091655200000, 0.04);
