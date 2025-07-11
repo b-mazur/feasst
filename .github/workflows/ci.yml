@@ -45,19 +45,19 @@ jobs:
       - name: Run Valgrind tests
         run: |
           cd build
-          source feasst_test_env/bin/activate
+          source feasst_env/bin/activate
           valgrind ./bin/unittest --gtest_color=no --gtest_filter=-*LONG*
 
       - name: Run GTest-parallel
         run: |
           cd build
-          source feasst_test_env/bin/activate
+          source feasst_env/bin/activate
           gtest-parallel bin/unittest --gtest_color=no -d tmp
 
       - name: Run pyfeasst scripts
         run: |
           cd pyfeasst/src/pyfeasst
-          source ../../../build/feasst_test_env/bin/activate
+          source ../../../build/feasst_env/bin/activate
           for script in *.py; do
             python "$script"
           done
@@ -65,13 +65,13 @@ jobs:
       - name: Run Python tutorials
         run: |
           cd dev/tools
-          source ../../build/feasst_test_env/bin/activate
+          source ../../build/feasst_env/bin/activate
           python run_tutorials.py --feasst_install ${{ github.workspace }}
 
       - name: Run PyBind11 examples
         run: |
           cd build
-          source feasst_test_env/bin/activate
+          source feasst_env/bin/activate
           python ../python/tutorial/test.py
           python ../python/tutorial/block_average.py
 
