@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      OMP_NUM_THREADS: 4
+      OMP_NUM_THREADS: 2
     steps:
       - uses: actions/checkout@v3
 
