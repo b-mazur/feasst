@@ -8,24 +8,30 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      OMP_NUM_THREADS: 4
     steps:
       - uses: actions/checkout@v3
+
       - name: Install system packages
         run: |
           sudo apt-get update
           sudo apt-get install -y python3 python3-pip wget tar cmake g++ pybind11-dev valgrind
+
       - name: Set up Python
         run: |
           python3 -m venv feasst_env
           source feasst_env/bin/activate
           python3 -m pip install --upgrade pip
           pip install ./pyfeasst numpy jupyter matplotlib pandas scipy wheel biopandas
+
       - name: Install gtest-parallel
         run: |
           mkdir -p /home/runner/software/gtest-parallel/
           git clone https://github.com/google/gtest-parallel.git /home/runner/software/gtest-parallel
           chmod +x /home/runner/software/gtest-parallel/gtest-parallel
           export PYTHONPATH=/home/runner/software/gtest-parallel:$PYTHONPATH
+
       - name: Configure with CMake
         run: |
           mkdir build
@@ -35,16 +41,57 @@ jobs:
         run: |
           cd build
           make install -j$(nproc)
-      - name: Run tests
+
+      - name: Run Valgrind tests
         run: |
-          export OMP_NUM_THREADS=2
-          bash dev/tools/build_and_test.sh
-      - name: Upload logs
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-logs
-          path: |
-            build/summary.log
-            build/summary_long.log
+          cd build
+          source feasst_test_env/bin/activate
+          valgrind ./bin/unittest --gtest_color=no --gtest_filter=-*LONG*
+
+      - name: Run GTest-parallel
+        run: |
+          cd build
+          source feasst_test_env/bin/activate
+          gtest-parallel bin/unittest --gtest_color=no -d tmp
+
+      - name: Run pyfeasst scripts
+        run: |
+          cd pyfeasst/src/pyfeasst
+          source ../../../build/feasst_test_env/bin/activate
+          for script in *.py; do
+            python "$script"
+          done
+
+      - name: Run Python tutorials
+        run: |
+          cd dev/tools
+          source ../../build/feasst_test_env/bin/activate
+          python run_tutorials.py --feasst_install ${{ github.workspace }}
+
+      - name: Run PyBind11 examples
+        run: |
+          cd build
+          source feasst_test_env/bin/activate
+          python ../python/tutorial/test.py
+          python ../python/tutorial/block_average.py
+
+      - name: Build C++ tutorial
+        shell: bash
+        run: |
+          cd tutorial
+          mkdir -p build && cd build
+          cmake ..
+          make -j$(nproc)
+
+      - name: Run C++ tutorial binary
+        shell: bash
+        run: |
+          cd tutorial/build
+          export LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH"
+          ./tutorial
+
+      - name: Run C++ example
+        run: |
+          cd tutorial
+          ../build/bin/fst < example.txt
 
