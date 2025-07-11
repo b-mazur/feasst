@@ -52,7 +52,7 @@ jobs:
         run: |
           cd build
           source ../feasst_env/bin/activate
-          gtest-parallel bin/unittest --gtest_color=no -d tmp
+          /home/runner/software/gtest-parallel/gtest-parallel bin/unittest --gtest_color=no -d tmp
 
       - name: Run pyfeasst scripts
         run: |
