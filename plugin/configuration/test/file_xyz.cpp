@@ -28,8 +28,7 @@ TEST(FileXYZ, load_spce) {
 }
 
 TEST(FileXYZ, load_frame) {
-  auto config = MakeConfiguration({{"particle_type0",
-                                    "../particle/dimer.txt"}});
+  auto config = MakeConfiguration({{"particle_type", "../particle/dimer.txt"}});
   std::ifstream xyz("../plugin/configuration/test/data/dimer4.xyz");
   FileXYZ fxyz;
   fxyz.load_frame(xyz, config.get());
@@ -47,10 +46,9 @@ TEST(FileXYZ, load_frame) {
 }
 
 TEST(FileXYZ, multicomponent) {
-  auto config = MakeConfiguration({{"particle_type0", "../particle/lj.txt"},
-                                   {"particle_type1", "../particle/spce.txt"},
-                                   {"particle_type2", "../particle/lj.txt"},
-                                   {"xyz_file", "../plugin/configuration/test/data/multicomponent.xyz"}});
+  auto config = MakeConfiguration({
+    {"particle_type", "lj:../particle/lj_new.txt,spce:../particle/spce.txt,lj2:../particle/lj_new.txt"},
+    {"xyz_file", "../plugin/configuration/test/data/multicomponent.xyz"}});
   EXPECT_EQ(config->num_particles(), 3);
   EXPECT_EQ(config->particle(0).type(), 0);
   EXPECT_EQ(config->particle(1).type(), 1);
@@ -58,13 +56,11 @@ TEST(FileXYZ, multicomponent) {
   FileXYZ().write("tmp/print.xyz", *config);
 }
 
-TEST(FileXYZ, multicomponent_failure) {
-  TRY(
-    auto config = MakeConfiguration({{"particle_type0", "../particle/lj.txt"},
-                                     {"particle_type1", "../particle/spce.txt"},
-                                     {"xyz_file", "../plugin/configuration/test/data/multicomponent2.xyz"}});
-    CATCH_PHRASE("not given in integers");
-  );
+TEST(FileXYZ, multicomponent2) {
+  auto config = MakeConfiguration({{"particle_type", "LJ:../particle/lj_new.txt,SPCE:../particle/spce_new.txt"},
+                                   {"xyz_file", "../plugin/configuration/test/data/multicomponent2.xyz"}});
+  EXPECT_EQ(config->num_particles_of_type(0), 2);
+  EXPECT_EQ(config->num_particles_of_type(1), 1);
 }
 
 }  // namespace feasst

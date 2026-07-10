@@ -10,7 +10,7 @@
 #include "monte_carlo/include/metropolis.h"
 #include "monte_carlo/include/monte_carlo.h"
 #include "monte_carlo/include/trial_transfer.h"
-#include "monte_carlo/include/run.h"
+#include "actions/include/run.h"
 #include "steppers/include/energy.h"
 #include "steppers/include/criteria_writer.h"
 #include "steppers/include/criteria_updater.h"
@@ -180,7 +180,7 @@ TEST(TrialGrow, transfer_avb_spce) {
                         {"cubic_side_length", "20"},
                         {"alpha", str(5.6/20)},
                         {"kmax_squared", "38"},
-                        {"add_particles_of_type0", "1"}});
+                        {"add_num_0_particles", "1"}});
   //system.get_configuration()->add_particle_of_type(0);
   auto ncrit = MakeNeighborCriteria({{"maximum_distance", "10"}, {"minimum_distance", "2.5"}, {"site_type0", "0"}, {"site_type1", "0"}, {"potential_index", "1"}});
   system.add(ncrit);

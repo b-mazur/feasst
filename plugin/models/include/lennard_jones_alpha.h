@@ -75,7 +75,7 @@ class LennardJonesAlpha : public LennardJones {
   void set_wca(const int site_type1, const int site_type2,
       ModelParams * params) const;
 
-  void precompute(const Configuration& config) override;
+  void precompute(Configuration * config) override;
 
   double energy(
     const double squared_distance,
@@ -140,7 +140,7 @@ inline std::shared_ptr<DeltaSigma> MakeDeltaSigma() {
 }
 
 /**
- The lambda parameter has the default mixing rule:
+ The lambda parameter has the default combining rule:
  \f$ \lambda_{ij} = \sqrt{\lambda_i \lambda_j} \f$
  */
 class Lambda : public ModelParam {

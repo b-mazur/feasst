@@ -10,18 +10,18 @@
 #include "steppers/include/tune.h"
 #include "steppers/include/check_energy.h"
 #include "monte_carlo/include/monte_carlo.h"
-#include "monte_carlo/include/run.h"
-#include "monte_carlo/include/remove.h"
 #include "monte_carlo/include/metropolis.h"
 #include "monte_carlo/include/trial_add.h"
 #include "monte_carlo/include/trial_translate.h"
+#include "actions/include/run.h"
+#include "actions/include/remove.h"
 
 namespace feasst {
 
 TEST(MeanSquaredDisplacement, msd) {
   MonteCarlo mc;
   mc.add(MakeConfiguration({{"cubic_side_length", "8"},
-                            {"particle_type0", "../particle/lj.txt"}}));
+                            {"particle_type", "../particle/lj_new.txt"}}));
   mc.add(MakePotential(MakeLennardJones()));
   mc.add(MakePotential(MakeLongRangeCorrections()));
   mc.set(MakeThermoParams({{"beta", "1.2"}, {"chemical_potential", "1."}}));

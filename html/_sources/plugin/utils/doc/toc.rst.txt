@@ -1,26 +1,27 @@
 
 .. toctree::
 
-   definitions
-   utils
-   ArgumentParse
-   Timer
-   max_precision
-   io
    ProgressReport
    file
-   TimerRDTSC
-   arguments
-   Else
-   arguments_extra
-   For
-   Cache
+   Timer
+   ArgumentParse
    CustomException
-   EndIf
-   Let
+   max_precision
+   utils
+   arguments
+   arguments_extra
+   Else
+   For
    If
    EndFor
+   definitions
+   io
    debug
    serialize
    serialize_extra
    Checkpoint
+   Let
+   TimerRDTSC
+   Restart
+   Cache
+   EndIf

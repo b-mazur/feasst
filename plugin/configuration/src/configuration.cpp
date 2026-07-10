@@ -95,7 +95,7 @@ Configuration::Configuration(argtype * args) {
   if (!xyz_file.empty() && xyz_euler_file.empty()) {
     FileXYZ().load(xyz_file, this);
   } else if (xyz_file.empty() && !xyz_euler_file.empty()) {
-    MakeFileXYZ({{"euler", "true"}})->load(xyz_euler_file, this);
+    FileXYZ().load(xyz_euler_file, this);
   } else if (!xyz_file.empty() && !xyz_euler_file.empty()) {
     FATAL("cannot read both xyz and xyz_euler files.");
   }
@@ -136,6 +136,7 @@ Configuration::Configuration(argtype * args) {
       const std::string param = iter->first;
       if (args->size() != 0) {
         if (used(param, *args)) {
+          DEBUG("overriding:" << param);
           const double value = dble(param, args);
           for (int site_type = 0; site_type < num_site_types(); ++site_type) {
             set_model_param(param, site_type, value);
@@ -146,6 +147,7 @@ Configuration::Configuration(argtype * args) {
         for (int site_type = 0; site_type < num_site_types(); ++site_type) {
           std::string param_arg = param + site_type_to_name(site_type);
           if (used(param_arg, *args)) {
+            DEBUG("overriding:" << param_arg);
             set_model_param(param, site_type, dble(param_arg, args));
           }
         }
@@ -156,6 +158,7 @@ Configuration::Configuration(argtype * args) {
             std::string param_arg = param + site_type_to_name(site1) + "_" +
                                             site_type_to_name(site2);
             if (used(param_arg, *args)) {
+              DEBUG("overriding:" << param_arg);
               set_model_param(param, site1, site2, dble(param_arg, args));
             }
           }
@@ -165,7 +168,7 @@ Configuration::Configuration(argtype * args) {
         std::string param_arg = param + "_mixing_file";
         if (used(param_arg, *args)) {
           WARN("Deprecated argument [parameter]_mixing_file. " <<
-            "Use mixing_file instead.");
+            "Use model_param_file instead.");
           DEBUG("param " << param << " param_arg " << param_arg);
           std::vector<std::string> names;
           site_type_names(&names);
@@ -465,7 +468,7 @@ void Configuration::update_positions(
     const std::vector<std::vector<double> > coords,
     const std::vector<std::vector<double> > eulers) {
   update_positions(coords);
-  ASSERT(dimension() == 3, "Eulers require 3 dimensions.");
+  //ASSERT(dimension() == 3, "Eulers require 3 dimensions.");
   Euler euler;
   int iter_site = 0;
   for (int part_index : group_selects_[0]->particle_indices()) {
@@ -1307,6 +1310,13 @@ void Configuration::site_type_names(std::vector<std::string> * names) const {
   for (int stype = 0; stype < num_site_types(); ++stype) {
     (*names)[stype] = site_type_to_name(stype);
   }
+}
+
+bool Configuration::anisotropic_sites() const {
+  if (model_params().index("anisotropic") == -1) {
+    return false;
+  }
+  return true;
 }
 
 }  // namespace feasst

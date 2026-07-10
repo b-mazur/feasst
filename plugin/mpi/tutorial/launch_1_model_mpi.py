@@ -13,13 +13,11 @@ import time
 import argparse
 import random
 import socket
-from pyfeasst import fstio
+from feasst import fstio
 
 def parse():
     """ Parse arguments from command line or change their default values. """
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--feasst_install', type=str, default='../../../build/',
-                        help='FEASST install directory (e.g., the path to build)')
     parser.add_argument('--fstprt', type=str, default='/feasst/particle/lj_new.txt',
                         help='FEASST particle definition')
     parser.add_argument('--beta', type=float, default=1/0.9, help='1 / kB / T')
@@ -30,18 +28,18 @@ def parse():
                         help='number of cycles for equilibraiton')
     parser.add_argument('--production_cycles', type=int, default=int(1e1),
                         help='number of cycles for production')
-    parser.add_argument('--procs_per_node', type=int, default=1, help='number of processors')
+    parser.add_argument('--procs_per_job', type=int, default=1, help='number of processors')
     parser.add_argument('--seed', type=int, default=-1,
                         help='Random number generator seed. If -1, assign random seed to each sim.')
     parser.add_argument('--run_type', '-r', type=int, default=0,
                         help='0: run, 1: submit to queue, 2: post-process')
     parser.add_argument('--hours_terminate', type=float, default=5*24, help='hours until termination')
     parser.add_argument('--hours_checkpoint', type=float, default=1, help='hours per checkpoint')
-    parser.add_argument('--num_nodes', type=int, default=1, help='Number of nodes in queue')
+    parser.add_argument('--num_jobs', type=int, default=1, help='Number of jobs in queue')
     parser.add_argument('--scratch', type=str, default=None,
                         help='Optionally write scheduled job to scratch/logname/jobid.')
     parser.add_argument('--queue_flags', type=str, default="", help='extra flags for queue (e.g., for slurm, "-p queue")')
-    parser.add_argument('--node', type=int, default=0, help='node ID')
+    parser.add_argument('--job', type=int, default=0, help='job ID')
     parser.add_argument('--queue_id', type=int, default=-1, help='If != -1, read args from file')
     parser.add_argument('--queue_task', type=int, default=0, help='If > 0, restart from checkpoint')
 
@@ -51,11 +49,10 @@ def parse():
     params = vars(args)
     params['prefix'] = 'lj'
     params['script'] = __file__
-    params['sim_id_file'] = params['prefix']+ '_sim_ids.txt'
     params['minutes'] = int(params['hours_terminate']*60) # minutes allocated on queue
     params['hours_terminate'] = 0.99*params['hours_terminate'] - 0.0333 # terminate before queue
     params['procs_per_sim'] = 1
-    params['num_sims'] = params['procs_per_node']
+    params['num_sims'] = params['procs_per_job']
     params['cubic_side_length'] = np.power(params['num_particles']/params['density'], 1./3.)
     return params, args
 
@@ -78,7 +75,7 @@ Run until_num_particles={num_particles}
 Remove name=TrialAdd
 Metropolis trials_per_cycle={tpc} cycles_to_complete={equilibration_cycles}
 Tune
-CheckEnergy trials_per_update={tpc} decimal_places=8
+CheckEnergy trials_per_update={tpc} decimal_places=6
 Let [write]=trials_per_write={tpc} output_file={prefix}{sim:03d}
 Log [write]_eq.csv
 Run until=complete
@@ -151,7 +148,7 @@ if __name__ == '__main__':
         parameters['sim'] = 0
         write_feasst_script(parameters, parameters['prefix']+"0_run.txt")
         print('here2')
-        cmd="""mpirun -np 1 {feasst_install}bin/fst < {prefix}0_run.txt : -np 1 python {script} -r 1""".format(**parameters)
+        cmd="""mpirun -np 1 feasst < {prefix}0_run.txt : -np 1 python {script} -r 1""".format(**parameters)
         print('cmd:', cmd)
         #subprocess.check_call(cmd, shell=True, executable='/bin/bash')
         from subprocess import Popen
@@ -160,7 +157,7 @@ if __name__ == '__main__':
     elif arguments.run_type == 2:
         post_process(parameters)
 #    fstio.run_simulations(params=params,
-#                          queue_function=fstio.slurm_single_node,
+#                          queue_function=fstio.slurm_single_job,
 #                          args=args,
 #                          write_feasst_script=write_feasst_script,
 #                          client=client,

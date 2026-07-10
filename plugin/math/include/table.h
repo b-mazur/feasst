@@ -24,7 +24,11 @@ class Table {
   virtual double maximum() const = 0;
 
   /// Return the bin spacing for a given number of elements.
-  double bin_spacing(const int num);
+  double calc_bin_spacing(const int num);
+
+  /// Return the bin just below the value.
+  virtual int value_to_lowest_bin(const int dim, const double value) const;
+  virtual double bin_to_value(const int dim, const int bin) const;
 
   /// Write to file.
   virtual void write(const std::string file_name) const;
@@ -32,8 +36,10 @@ class Table {
   virtual ~Table() {}
 };
 
+double table_xd_(const double value0, const double d0, const int n0, int * i0, int * i02);
+
 /**
-  This is a one-dimensional implementation of a table.
+  One-dimensional implementation of a table.
  */
 class Table1D : public Table {
  public:
@@ -48,12 +54,22 @@ class Table1D : public Table {
   /// Return the number of values.
   int num() const { return static_cast<int>(data_.size()); }
 
+  /// Return the bin spacing.
+  double bin_spacing() const { return bin_spacing_; }
+
   /// For a given dimension, return the value of a bin.
-  double bin_to_value(const int bin) const {
+  double bin_value(const int bin) const {
     return bin_spacing_*bin; }
 
   /// The inverse of above.
   int value_to_nearest_bin(const double value) const;
+  int value_to_lowest_bin(const int dim, const double value) const override;
+
+  /// Return the bin just below the value.
+  int value_lowest_bin(const double value) const;
+
+  /// For a given dimension, return the value of a bin.
+  double bin_to_value(const int dim, const int bin) const override;
 
   /// Set data.
   void set_data(const int dim0, const double value) { data_[dim0] = value; }
@@ -61,15 +77,18 @@ class Table1D : public Table {
   /// Return the data.
   const std::vector<double>& data() const { return data_; }
 
+  /// Return the data.
+  double data(const int index) const { return data_[index]; }
+
   /// Add the values of the given table.
   void add(const Table1D& table);
 
   /// Return linear interpolation of data given normalized values.
-  double linear_interpolation(const double value0) const;
+  virtual double linear_interpolation(const double value0) const;
 
   /// Return the Newton-Gregory forward difference interpolation.
   /// See Allen and Tildesley, 5.2.2, Booth 1972
-  double forward_difference_interpolation(const double value0) const;
+  virtual double forward_difference_interpolation(const double value0) const;
 
   double minimum() const override;
   double maximum() const override;
@@ -83,6 +102,9 @@ class Table1D : public Table {
 
   virtual ~Table1D();
 
+ protected:
+  double c00_(const double xd0, const int i0, const int i02) const;
+
  private:
   std::vector<double> data_;
   double bin_spacing_;
@@ -92,10 +114,10 @@ class Table1D : public Table {
 inline std::shared_ptr<Table1D> MakeTable1D(argtype args = argtype()) {
   return std::make_shared<Table1D>(args); }
 
-typedef std::vector<std::vector<double> > vec2;
+typedef std::vector<std::vector<float> > fvec2;
 
 /**
-  This is a two-dimensional implementation of a table.
+  Two-dimensional implementation of a table.
  */
 class Table2D : public Table {
  public:
@@ -117,26 +139,30 @@ class Table2D : public Table {
   /// Return the number of values in a given dimension.
   int num(const int dim) const;
 
+  /// Return the bin spacing.
+  double bin_spacing(const int dim) const { return bin_spacing_[dim]; }
+
   /// For a given dimension, return the value of a bin.
-  double bin_to_value(const int dim, const int bin) const {
+  double bin_to_value(const int dim, const int bin) const override {
     return bin_spacing_[dim]*bin; }
 
   /// The inverse of above.
   int value_to_nearest_bin(const int dim, const double value) const;
+  int value_to_lowest_bin(const int dim, const double value) const override;
 
   /// Set data.
   void set_data(const int dim0, const int dim1, const double value) {
     data_[dim0][dim1] = value; }
 
   /// Return the data.
-  const vec2& data() const { return data_; }
+  const fvec2& data() const { return data_; }
 
   /// Add the values of the given table.
   void add(const Table2D& table);
 
   /// Return linear interpolation of data given normalized values for each
   /// dimension that range from 0 to 1, inclusive.
-  double linear_interpolation(const double value0,
+  virtual double linear_interpolation(const double value0,
     const double value1) const;
 
   double minimum() const override;
@@ -151,8 +177,12 @@ class Table2D : public Table {
 
   virtual ~Table2D() {}
 
+ protected:
+  double c00_(const double xd0, const double xd1, const int i0, const int i02,
+    const int i1, const int i12) const;
+
  private:
-  vec2 data_;
+  fvec2 data_;
   std::vector<double> bin_spacing_;
   void calc_d_();
 };
@@ -160,10 +190,10 @@ class Table2D : public Table {
 inline std::shared_ptr<Table2D> MakeTable2D(argtype args = argtype()) {
   return std::make_shared<Table2D>(args); }
 
-typedef std::vector<vec2> vec3;
+typedef std::vector<fvec2> fvec3;
 
 /**
-  This is a three-dimensional implementation of a table.
+  Three-dimensional implementation of a table.
  */
 class Table3D : public Table {
  public:
@@ -189,26 +219,30 @@ class Table3D : public Table {
   /// Return the number of values in a given dimension.
   int num(const int dim) const;
 
+  /// Return the bin spacing.
+  double bin_spacing(const int dim) const { return bin_spacing_[dim]; }
+
   /// For a given dimension, return the value of a bin.
-  double bin_to_value(const int dim, const int bin) const {
+  double bin_to_value(const int dim, const int bin) const override {
     return bin_spacing_[dim]*bin; }
 
   /// The inverse of above.
   int value_to_nearest_bin(const int dim, const double value) const;
+  int value_to_lowest_bin(const int dim, const double value) const override;
 
   /// Set data.
   void set_data(const int dim0, const int dim1, const int dim2,
     const double value) { data_[dim0][dim1][dim2] = value; }
 
   /// Return the data.
-  const vec3& data() const { return data_; }
+  const fvec3& data() const { return data_; }
 
   /// Add the values of the given table.
   void add(const Table3D& table);
 
   /// Return linear interpolation of data given normalized values for each
   /// dimension that range from 0 to 1, inclusive.
-  double linear_interpolation(const double value0,
+  virtual double linear_interpolation(const double value0,
     const double value1,
     const double value2) const;
 
@@ -230,8 +264,13 @@ class Table3D : public Table {
 
   virtual ~Table3D() {}
 
+ protected:
+  double c00_(const double xd0, const double xd1, const double xd2,
+    const int i0, const int i02, const int i1, const int i12, const int i2,
+    const int i22) const;
+
  private:
-  vec3 data_;
+  fvec3 data_;
   std::vector<double> bin_spacing_;
   void calc_d_();
 };
@@ -243,10 +282,10 @@ inline std::shared_ptr<Table3D> MakeTable3D(const std::string file_name) {
   return std::make_shared<Table3D>(file_name);
 }
 
-typedef std::vector<vec3> vec4;
+typedef std::vector<fvec3> fvec4;
 
 /**
-  This is a four-dimensional implementation of a table.
+  Four-dimensional implementation of a table.
  */
 class Table4D : public Table {
  public:
@@ -276,8 +315,11 @@ class Table4D : public Table {
   /// Return the number of values in a given dimension.
   int num(const int dim) const;
 
+  /// Return the bin spacing.
+  double bin_spacing(const int dim) const { return bin_spacing_[dim]; }
+
   /// For a given dimension, return the value of a bin.
-  double bin_to_value(const int dim, const int bin) const {
+  double bin_to_value(const int dim, const int bin) const override {
     return bin_spacing_[dim]*bin; }
 
   /// The inverse of above.
@@ -288,7 +330,7 @@ class Table4D : public Table {
     const double value) { data_[dim0][dim1][dim2][dim3] = value; }
 
   /// Return the data.
-  const vec4& data() const { return data_; }
+  const fvec4& data() const { return data_; }
 
   /// Add the values of the given table.
   void add(const Table4D& table);
@@ -319,7 +361,7 @@ class Table4D : public Table {
   virtual ~Table4D() {}
 
  private:
-  vec4 data_;
+  fvec4 data_;
   std::vector<double> bin_spacing_;
   void calc_d_();
 };
@@ -331,11 +373,10 @@ inline std::shared_ptr<Table4D> MakeTable4D(const std::string file_name) {
   return std::make_shared<Table4D>(file_name);
 }
 
-typedef std::vector<std::vector<std::vector<std::vector<float> > > > fvec4;
 typedef std::vector<fvec4> fvec5;
 
 /**
-  This is a five-dimensional implementation of a table.
+  Five-dimensional implementation of a table.
  */
 class Table5D : public Table {
  public:
@@ -369,12 +410,16 @@ class Table5D : public Table {
   /// Return the number of values in a given dimension.
   int num(const int dim) const;
 
+  /// Return the bin spacing.
+  double bin_spacing(const int dim) const { return bin_spacing_[dim]; }
+
   /// For a given dimension, return the value of a bin.
-  double bin_to_value(const int dim, const int bin) const {
+  double bin_to_value(const int dim, const int bin) const override {
     return bin_spacing_[dim]*bin; }
 
   /// The inverse of above.
   int value_to_nearest_bin(const int dim, const double value) const;
+  int value_to_lowest_bin(const int dim, const double value) const override;
 
   /// Set data.
   void set_data(const int dim0, const int dim1, const int dim2, const int dim3,
@@ -389,7 +434,7 @@ class Table5D : public Table {
 
   /// Return linear interpolation of data given normalized values for each
   /// dimension that range from 0 to 1, inclusive.
-  double linear_interpolation(const double value0,
+  virtual double linear_interpolation(const double value0,
     const double value1,
     const double value2,
     const double value3,
@@ -412,6 +457,11 @@ class Table5D : public Table {
   Table5D deserialize(const std::string str);
 
   virtual ~Table5D() {}
+ protected:
+  double c00_(const double xd0, const double xd1, const double xd2,
+    const double xd3, const double xd4, const int i0, const int i02,
+    const int i1, const int i12, const int i2, const int i22, const int i3,
+    const int i32, const int i4, const int i42) const;
 
  private:
   fvec5 data_;
@@ -429,7 +479,7 @@ inline std::shared_ptr<Table5D> MakeTable5D(const std::string file_name) {
 typedef std::vector<fvec5> fvec6;
 
 /**
-  This is a six-dimensional implementation of a table.
+  Six-dimensional implementation of a table.
  */
 class Table6D : public Table {
  public:
@@ -467,12 +517,16 @@ class Table6D : public Table {
   /// Return the number of values in a given dimension.
   int num(const int dim) const;
 
+  /// Return the bin spacing.
+  double bin_spacing(const int dim) const { return bin_spacing_[dim]; }
+
   /// For a given dimension, return the value of a bin.
-  double bin_to_value(const int dim, const int bin) const {
+  double bin_to_value(const int dim, const int bin) const override {
     return bin_spacing_[dim]*bin; }
 
   /// The inverse of above.
   int value_to_nearest_bin(const int dim, const double value) const;
+  int value_to_lowest_bin(const int dim, const double value) const override;
 
   /// Set data.
   void set_data(const int dim0, const int dim1, const int dim2, const int dim3,
@@ -487,7 +541,7 @@ class Table6D : public Table {
 
   /// Return linear interpolation of data given normalized values for each
   /// dimension that range from 0 to 1, inclusive.
-  double linear_interpolation(const double value0,
+  virtual double linear_interpolation(const double value0,
     const double value1,
     const double value2,
     const double value3,
@@ -511,6 +565,12 @@ class Table6D : public Table {
   Table6D deserialize(const std::string str);
 
   virtual ~Table6D() {}
+
+ protected:
+  double c00_(const double xd0, const double xd1, const double xd2,
+    const double xd3, const double xd4, const double xd5, const int i0, const int i02,
+    const int i1, const int i12, const int i2, const int i22, const int i3,
+    const int i32, const int i4, const int i42, const int i5, const int i52) const;
 
  private:
   fvec6 data_;

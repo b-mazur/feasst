@@ -6,11 +6,11 @@
 #include "system/include/long_range_corrections.h"
 #include "system/include/dont_visit_model.h"
 #include "monte_carlo/include/metropolis.h"
-#include "monte_carlo/include/run.h"
-#include "monte_carlo/include/remove.h"
 #include "monte_carlo/include/metropolis.h"
 #include "monte_carlo/include/trial_translate.h"
 #include "monte_carlo/include/trial_add.h"
+#include "actions/include/run.h"
+#include "actions/include/remove.h"
 #include "flat_histogram/include/flat_histogram.h"
 #include "flat_histogram/include/transition_matrix.h"
 #include "flat_histogram/include/ln_probability.h"
@@ -48,8 +48,6 @@ void test_morph(const System& system) {
   EXPECT_EQ(mc.configuration().num_particles_of_type(1), 2);
   mc.add(std::make_shared<TrialMorph>(argtype({{"particle_type", "1"},
                          {"particle_type_morph", "0"}, {"reference_index", "0"}})));
-  mc.add(std::make_shared<TrialMorph>(argtype({{"particle_type", "0"},
-                         {"particle_type_morph", "1"}, {"reference_index", "0"}})));
 //  mc.add(MakeLogAndMovie({{"trials_per_write", str(1e2)}, {"output_file", "tmp/growth"}}));
   mc.add(MakeCheckEnergy({{"trials_per_update", str(1e2)}}));
   mc.add(MakeTune());
@@ -61,8 +59,7 @@ void test_morph(const System& system) {
 TEST(MonteCarlo, TrialMorph) {
   System system;
   system.add(MakeConfiguration({{"cubic_side_length", "8"},
-    {"particle_type0", "../particle/lj.txt"},
-    {"particle_type1", "../particle/lj.txt"}}));
+    {"particle_type", "../particle/lj.txt,../particle/lj.txt"}}));
   system.add(MakePotential(MakeLennardJones()));
   system.add(MakePotential(MakeLongRangeCorrections()));
   system.add_to_reference(MakePotential(MakeDontVisitModel()));
@@ -72,8 +69,7 @@ TEST(MonteCarlo, TrialMorph) {
 TEST(MonteCarlo, TrialMorphCO2N2) {
   System system;
   system.add(MakeConfiguration({{"cubic_side_length", "30"},
-    {"particle_type0", "../particle/co2.txt"},
-    {"particle_type1", "../particle/n2.txt"}}));
+    {"particle_type", "../particle/co2.txt,../particle/n2.txt"}}));
   system.add(MakePotential(MakeLennardJones()));
   system.add(MakePotential(MakeLongRangeCorrections()));
   system.add_to_reference(MakePotential(MakeDontVisitModel()));
@@ -81,32 +77,33 @@ TEST(MonteCarlo, TrialMorphCO2N2) {
 }
 
 std::unique_ptr<MonteCarlo> test_morph_expanded_lj(
-  const std::vector<std::vector<int> > grow_sequence,
   const int max = 5) {
   auto mc = std::make_unique<MonteCarlo>();
   mc->add(MakeConfiguration({{"cubic_side_length", "8"},
-                            {"particle_type0", "../particle/lj.txt"},
-                            {"particle_type1", "../particle/atom.txt"},
+                            {"particle_type", "../particle/lj.txt,../particle/atom.txt"},
                             {"sigma1", "0.5"},
                             {"cutoff1", "1"},
-                            {"add_particles_of_type0", "1"}}));
+                            {"add_num_0_particles", "1"}}));
   mc->add(MakePotential(MakeLennardJones()));
   mc->add(MakePotential(MakeLongRangeCorrections()));
   mc->add_to_reference(MakePotential(MakeDontVisitModel()));
-  const double num_parts_in_grow = static_cast<double>(grow_sequence[0].size());
+  //const double num_parts_in_grow = static_cast<double>(grow_sequence[0].size());
   //INFO(str(num_parts_in_grow/grow_sequence.size()));
   mc->set(MakeThermoParams({
     {"beta", str(1./1.5)},
     {"chemical_potential", "-2.352321,-2.352321"}}));
   auto criteria = MakeFlatHistogram(
-    MakeMacrostateMorph(grow_sequence,
-      Histogram({{"width", str(num_parts_in_grow/grow_sequence.size())},
-                 {"max", str(max)}, {"min", "1"}})),
+    std::make_shared<MacrostateMorph>(argtype({{"max", str(max)}, {"min", "1"}, {"width", "1"}, {"morph_sequence", "1;1,0;0"}})),
+    //MakeMacrostateMorph(grow_sequence,
+    //  //Histogram({{"width", str(num_parts_in_grow/grow_sequence.size())},
+    //  Histogram({{"width", str(2/2))},
+    //             {"max", str(max)}, {"min", "1"}})),
     MakeTransitionMatrix({{"min_sweeps", "1000"}}));
   mc->set(criteria);
   mc->add(MakeTrialTranslate({{"weight", "0.25"}, {"tunable_param", "1."}}));
-  mc->add(MakeTrialMorphExpanded(grow_sequence,
-    {{"reference_index", "0"}}));//, {"shift", str(-1*num_parts_in_grow)}}));
+  mc->add(std::make_shared<TrialMorphExpanded>(argtype({{"morph_sequence", "1;1,0;0"}, {"reference_index", "0"}})));
+  //mc->add(MakeTrialMorphExpanded(grow_sequence,
+  //  {{"reference_index", "0"}}));//, {"shift", str(-1*num_parts_in_grow)}}));
   const std::string trials_per = str(int(1e3));
 //  mc->add(MakeLogAndMovie({{"trials_per_write", trials_per}, {"output_file", "tmp/grow_fh"}}));
   mc->add(MakeCheckEnergy({{"trials_per_update", trials_per}}));
@@ -131,10 +128,13 @@ std::unique_ptr<MonteCarlo> test_morph_expanded_lj(
 //}
 
 TEST(MonteCarlo, TrialMorphExpanded_2_lj_LONG) {
-  auto mc = test_morph_expanded_lj({{1, 1}, {0, 0}}, 5);
+  auto mc = test_morph_expanded_lj(5);
+  //auto mc = test_morph_expanded_lj({{1, 1}, {0, 0}}, 5);
   mc->run_until_complete();
   //INFO(FlatHistogram(mc->criteria()).write());
+  INFO("here1");
   const LnProbability lnpi = FlatHistogram().flat_histogram(mc->criteria())->bias().ln_prob().reduce(2);
+  INFO("here1");
   EXPECT_NEAR(lnpi.value(0), -13.9933350923078, 0.04);
   EXPECT_NEAR(lnpi.value(1), -6.41488235897456, 0.04);
   EXPECT_NEAR(lnpi.value(2), -0.00163919230786818, 0.005);
@@ -186,11 +186,8 @@ TEST(MonteCarlo, TrialMorph_RPM) {
 std::unique_ptr<MonteCarlo> test_morph_expanded(const std::string trials_per) {
   auto mc = std::make_unique<MonteCarlo>();
   mc->add(MakeConfiguration({{"cubic_side_length", "8"},
-                            {"particle_type0", "../particle/lj.txt"},
-                            {"particle_type1", "../particle/lj.txt"},
-                            {"particle_type2", "../particle/lj.txt"},
-                            {"particle_type3", "../particle/lj.txt"},
-                            {"add_particles_of_type0", "1"}}));
+                            {"particle_type", "../particle/lj.txt,../particle/lj.txt,../particle/lj.txt,../particle/lj.txt"},
+                            {"add_num_0_particles", "1"}}));
   mc->add(MakePotential(MakeLennardJones()));
   const std::vector<std::vector<int> > grow_sequence = {{1}, {2}, {3}, {0}};
   mc->set(MakeThermoParams({
@@ -203,7 +200,7 @@ std::unique_ptr<MonteCarlo> test_morph_expanded(const std::string trials_per) {
     // MakeWangLandau({{"min_flatness", "25"}}),
     MakeTransitionMatrix({{"min_sweeps", "10"}})));
   mc->add(MakeTrialTranslate({{"weight", "1."}, {"tunable_param", "1."}}));
-  mc->add(MakeTrialMorphExpanded(grow_sequence));
+  mc->add(std::make_shared<TrialMorphExpanded>(argtype({{"morph_sequence", "1,2,3,0"}})));
 //  mc->add(MakeLogAndMovie({{"trials_per_write", trials_per}, {"output_file", "tmp/growth"}}));
   mc->add(MakeCheckEnergy({{"trials_per_update", trials_per}}));
   mc->add(MakeTune());
@@ -254,24 +251,18 @@ TEST(MonteCarlo, TrialMorphExpandedBinary_LONG) {
   MonteCarlo mc;
   mc.set(MakeRandomMT19937({{"seed", "1234"}}));
   mc.add(MakeConfiguration({{"cubic_side_length", "8"},
-                            {"particle_type0", "../particle/lj.txt"},
-                            {"particle_type1", "../particle/lj.txt"},
-                            {"particle_type2", "../particle/lj.txt"},
-                            {"particle_type3", "../particle/lj.txt"}}));
+                            {"particle_type", "../particle/lj.txt,../particle/lj.txt,../particle/lj.txt,../particle/lj.txt"}}));
   mc.add(MakePotential(MakeLennardJones()));
   mc.add_to_reference(MakePotential(MakeDontVisitModel()));
-  const std::vector<std::vector<int> > grow_sequence = {{2, 3, 3}, {0, 1, 1}};
   mc.set(MakeThermoParams({
     {"beta", str(1./1.5)},
     {"chemical_potential", "-2.352321,-2,-2.1,-2.2"}}));
   mc.set(MakeFlatHistogram(
-    MakeMacrostateMorph(
-      grow_sequence,
-      Histogram({{"width", str(1./grow_sequence.size())}, {"max", "5"}, {"min", "0"}})),
+    std::make_shared<MacrostateMorph>(argtype({{"max", "5"}, {"min", "0"}, {"width", "0.5"}, {"morph_sequence", "2;3;3,0;1;1"}})),
     // MakeWangLandau({{"min_flatness", "25"}}),
     MakeTransitionMatrix({{"min_sweeps", "10"}})));
   mc.add(MakeTrialTranslate({{"weight", "1."}, {"tunable_param", "1."}}));
-  mc.add(MakeTrialMorphExpanded(grow_sequence, {{"reference_index", "0"}}));
+  mc.add(std::make_shared<TrialMorphExpanded>(argtype({{"morph_sequence", "2;3;3,0;1;1"}, {"reference_index", "0"}})));
   const std::string trials_per = str(int(1e3));
 //  mc.add(MakeLogAndMovie({{"trials_per_write", trials_per}, {"output_file", "tmp/growth"}}));
   mc.add(MakeCheckEnergy({{"trials_per_update", trials_per}}));
@@ -298,15 +289,8 @@ TEST(MonteCarlo, morphrxn) {
   auto mc = MakeMonteCarlo({{
     {"RandomMT19937", {{"seed", "123"}}},
     {"Configuration", {{"cubic_side_length", "8"},
-                       {"particle_type0", "../plugin/morph/particle/trimer_to_tetramer.txt"}, // h2o
-                       {"particle_type1", "../particle/tetramer.txt"},                        // h30
-                       {"particle_type2", "../plugin/morph/particle/dimer_to_monomer.txt"},    // dimer should go to monomer
-                       {"particle_type3", "../plugin/morph/particle/monomer.txt"},
-                       //{"particle_type0", "../particle/lj.txt"},
-                       //{"particle_type1", "../particle/lj.txt"},
-                       //{"particle_type2", "../particle/lj.txt"},
-                       //{"particle_type3", "../particle/lj.txt"},
-                       {"add_particles_of_type2", "1"}}},
+                       {"particle_type", "../plugin/morph/particle/trimer_to_tetramer.txt,../particle/tetramer.txt,../plugin/morph/particle/dimer_to_monomer.txt,../plugin/morph/particle/monomer.txt"},
+                       {"add_num_2_particles", "1"}}},
     {"Potential", {{"Model", "LennardJones"}}},
     {"RefPotential", {{"VisitModel", "DontVisitModel"}}},
     {"ThermoParams", {{"beta", "1"}, {"chemical_potential", "1,1,1,1"}}},
@@ -324,14 +308,9 @@ TEST(MonteCarlo, morphrxn) {
     {"Run", {{"until_num_particles", "100"}, {"particle_type", "0"}}},
     {"Remove", {{"name", "TrialAdd"}}},
     {"TrialMorph", {{"weight", "0.1"}, {"reference_index", "0"},
-                    {"particle_type0", "0"}, {"particle_type_morph0", "1"},
-                    {"particle_type1", "2"}, {"particle_type_morph1", "3"}}},
+                    {"particle_type", "0,2"}, {"particle_type_morph", "1,3"}}},
     {"TrialMorph", {{"weight", "0.1"}, {"reference_index", "0"},
-                    {"particle_type0", "1"}, {"particle_type_morph0", "0"},
-                    {"particle_type1", "3"}, {"particle_type_morph1", "2"}}},
-    {"TrialMorph", {{"weight", "0.1"}, {"reference_index", "0"},
-                    {"particle_type0", "0"}, {"particle_type_morph0", "1"},
-                    {"particle_type1", "1"}, {"particle_type_morph1", "0"}}},
+                    {"particle_type", "0,1"}, {"particle_type_morph", "1,0"}}},
     {"CheckEnergy", {{"trials_per_update", tpis}, {"decimal_places", "8"}}},
     //{"Log", {{"trials_per_write", tpis}, {"output_file", "tmp/lj.csv"}}},
     //{"Movie", {{"trials_per_write", tpis}, {"output_file", "tmp/lj.xyz"}}},
@@ -344,7 +323,7 @@ TEST(MonteCarlo, morphrxn) {
 TEST(MonteCarlo, octane_01_fh_VERY_LONG) {
   const std::string tpc = "1e4";
   auto mc = MakeMonteCarlo({{
-    {"Configuration", {{"cubic_side_length", "45"}, {"particle_type0", "../particle/n-octane.txt"}}},
+    {"Configuration", {{"cubic_side_length", "45"}, {"particle_type", "../particle/n-octane.txt"}}},
     {"Potential", {{"Model", "LennardJones"}}},
     {"Potential", {{"Model", "LennardJones"}, {"VisitModel", "VisitModelIntraMap"}, {"exclude_bonds", "true"}, {"exclude_angles", "true"}, {"exclude_dihedrals", "true"}}},
     {"RefPotential", {{"VisitModel", "DontVisitModel"}}},

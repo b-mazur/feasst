@@ -29,9 +29,9 @@ void ModelTwoBodyTable::resize(const int num_site_types) {
   feasst::resize(num_site_types, num_site_types, &table_);
 }
 
-void ModelTwoBodyTable::precompute(const Configuration& config) {
+void ModelTwoBodyTable::precompute(Configuration *config) {
   Model::precompute(config);
-  const ModelParams& existing = config.model_params();
+  const ModelParams& existing = config->model_params();
   if (cutoff_inv_sq_->size() == 0) {
     const ModelParam& rc = existing.select("cutoff");
     for (int type1 = 0; type1 < existing.size(); ++type1) {
@@ -79,7 +79,7 @@ void ModelTwoBodyTable::set(const ModelParams& model_params,
       const double rcg = cutoff_inv_sq_->mixed_value(type1, type2);
       auto table = MakeTable1D({{"num", str(size)}});
       for (int bin = 0; bin < size; ++bin) {
-        const double z = table->bin_to_value(bin);
+        const double z = table->bin_value(bin);
         const double r = std::pow(z*(rcg - rhg) + rhg, -0.5);
         const double en = model->energy(r*r, type1, type2, model_params);
         DEBUG("z " << z << " r " << r << " en " << en);

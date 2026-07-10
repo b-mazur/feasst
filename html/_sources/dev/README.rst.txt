@@ -371,12 +371,19 @@ To Do List
 * make a gui/software/script that walks through the building of a FEASST input file.
 * For 0.26, Remove Random::[time, default] arguments
 * For 0.26, Remove ConvertToRefPotential, ProfileTrials, RemoveModify, RemoveAnalyze, RemoveTrial, Run::until_criteria_complete, Criteria/Stepper::iteration
-* For 0.26, Depreciate and update AngleSquareWell::min/max to min_degrees/max_degrees
+* For 0.26, Deprecate and update AngleSquareWell::min/max to min_degrees/max_degrees
 * For 0.26, https://github.com/usnistgov/feasst/issues/23
 * For 0.26, Remove serialization version checks grep "if (version >"
-* For 0.26, move pyfeasst.cd to pyfeasst.fstio
-* For 0.26, TrialMorph becomes TrialFactoryNamed with reverse and half weights
+* For 0.26, deprecate move pyfeasst.cd in favor of pyfeasst.fstio.cd
 * For 0.26, remove Copy[following/next] in favor of For
 * Benchmark FEASST for use with podman or apptainer
 * Search for deprecate Warn in weekly build tests
-* Substitute previous Let variables in subsequent Let (e.g., Let [lj]=Model=LennardJones; Let [ljcell]=[lj] VisitModel=VisitModelCell min_length=3)
+* Tune output should include trial description like Log
+* neighbor_index should have a name string
+* Remove TrialFactoryNamed fso it works well with Prefetch
+* PerturbMoveAVB seems to disconnect molecules if AVB site is not first site
+* Make a Model for VisitModelInnerTable that can use angular dependent parameters
+* MayerSampling Potential ModelParam override epsilon0_H=1 in aniso tut 1l2d causes issues.
+* TrialRotate::site!=0 with mixed iso/aniso sites not accepted.
+* variable in For loop cannot be used more than once in a line.
+* create a "Run Scope" for trials, analyze, modify that go away when Run is complete?

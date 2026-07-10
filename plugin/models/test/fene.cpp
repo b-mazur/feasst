@@ -17,13 +17,13 @@ namespace feasst {
 System fene_ex() {
   System system;
   system.add(MakeConfiguration({{"cubic_side_length", "12"},
-    {"particle_type0", "../plugin/models/particle/chain10.txt"},
-    {"add_particles_of_type0", "1"}}));
+    {"particle_type", "chain:../plugin/models/particle/chain10.txt"},
+    {"add_num_chain_particles", "1"}}));
   // wca
   { auto wca = MakeLennardJonesCutShift();
     ModelParams wca_params = system.configuration().model_params();
     wca->set_wca(0, 0, &wca_params);
-    wca->precompute(system.configuration());
+    wca->precompute(system.get_configuration());
     auto potential = MakePotential(wca, MakeVisitModelBond());
     potential->set(wca_params); // use wca_params.
     system.add(potential);

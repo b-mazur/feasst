@@ -1,24 +1,26 @@
 
 .. toctree::
 
-   Position
+   LinearSpline1D
    Matrix
-   Histogram
    Minimize
-   GoldenSearch
-   Euler
    Random
-   RandomMT19937
    RandomModulo
-   Formula
-   FormulaExponential
-   Solver
-   SolverNewtonRaphson
-   constants
-   quadratic_equation
-   SolverBisection
-   FormulaPolynomial
+   Euler
    Table
    utils_math
-   SolverBrentDekker
+   RecursiveTable1D
+   constants
+   quadratic_equation
+   Formula
+   FormulaPolynomial
+   FormulaExponential
+   GoldenSearch
+   RandomMT19937
+   Histogram
+   Position
    Accumulator
+   Solver
+   SolverNewtonRaphson
+   SolverBisection
+   SolverBrentDekker

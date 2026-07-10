@@ -56,24 +56,6 @@ std::shared_ptr<Shape> Shape::deserialize(std::istream& istr) {
     true);
 }
 
-void ShapedEntity::serialize(std::ostream& ostr) const {
-  feasst_serialize_version(9249, ostr);
-  feasst_serialize_fstdr(shape_, ostr);
-}
-
-ShapedEntity::ShapedEntity(std::istream& istr) {
-  const int version = feasst_deserialize_version(istr);
-  ASSERT(version == 9249, "unrecognized verison: " << version);
-  // feasst_deserialize_fstdr(shape_, istr);
-  { // HWH for unknown reasons the above template function does not work
-    int existing;
-    istr >> existing;
-    if (existing != 0) {
-      shape_ = shape_->deserialize(istr);
-    }
-  }
-}
-
 double Shape::surface_area() const { FATAL("not implemented"); }
 
 double Shape::volume() const { FATAL("not implemented"); }
@@ -86,10 +68,10 @@ double Shape::integrate(
   // read alpha and epsilon
   std::vector<double> alpha, epsilon;
   std::string start;
-  start.assign("alpha");
+  start.assign("wall_alpha");
   if (used(start, *args)) {
     alpha.push_back(dble(start, args));
-    epsilon.push_back(dble("epsilon", args));
+    epsilon.push_back(dble("wall_epsilon", args));
   } else {
     int type = static_cast<int>(alpha.size());
     std::stringstream key;
@@ -97,7 +79,7 @@ double Shape::integrate(
     while (used(key.str(), *args)) {
       alpha.push_back(dble(key.str(), args));
       key.str("");
-      key << "epsilon" << type;
+      key << "wall_epsilon" << type;
       epsilon.push_back(dble(key.str(), args));
       ++type;
       key.str("");

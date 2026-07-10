@@ -87,16 +87,11 @@ void VisitModelInnerTable::read_table(const std::string file_name,
       ASSERT(descript == "smoothing_distance", "format error: " << descript);
       smoothing_distance_[itype][jtype] = double_val;
       DEBUG("smoothing_distance " << smoothing_distance_[itype][jtype]);
-      int ns1 = 0;
-      if (itype == jtype) {
-        ns1 = num_orientations_per_pi + 1;
-      } else {
-        ns1 = 2*num_orientations_per_pi + 1;
-      }
+      const int ns1 = 2*num_orientations_per_pi + 1;
       const int ns2 = num_orientations_per_pi + 1;
-      const int ne1 = 2*num_orientations_per_pi + 1;
+      const int ne1 = ns1;
       const int ne2 = ns2;
-      const int ne3 = ne1;
+      const int ne3 = ns1;
       DEBUG("ns1 " << ns1);
       DEBUG("ns2 " << ns2);
       DEBUG("ne1 " << ne1);
@@ -210,6 +205,10 @@ void VisitModelInnerTable::precompute(Configuration * config) {
 }
 
 void VisitModelInnerTable::precompute_cutoffs(Configuration * config) {
+  if (cutoffs_precomputed_) {
+    return;
+  }
+  cutoffs_precomputed_ = true;
   const std::vector<std::vector<std::shared_ptr<Table5D> > >& inner = config->table5d();
   for (int t1 = 0; t1 < static_cast<int>(site_types_.size()); ++t1) {
     const int type1 = site_types_[t1];
@@ -226,13 +225,30 @@ void VisitModelInnerTable::precompute_cutoffs(Configuration * config) {
   }
 }
 
-double VisitModelInnerTable::compute_aniso(const int type1, const int type2,
+double VisitModelInnerTable::compute_aniso(const int tabtype1, const int tabtype2,
+    const double squared_distance, const double s1,
+    const Configuration& config, const ModelParams& model_params,
+    const int type1, const int type2) const {
+  FATAL("not implemented");
+}
+
+double VisitModelInnerTable::compute_aniso(const int tabtype1, const int tabtype2,
     const double squared_distance, const double s1, const double s2,
-    const double e1, const double e2, const double e3, const Configuration& config) const {
+    const Configuration& config, const ModelParams& model_params,
+    const int type1, const int type2) const {
+  FATAL("not implemented");
+}
+
+double VisitModelInnerTable::compute_aniso(const int tabtype1, const int tabtype2,
+    const double squared_distance, const double s1, const double s2,
+    const double e1, const double e2, const double e3,
+    const Configuration& config, const ModelParams& model_params,
+    const int stype1, const int stype2) const {
   const std::vector<std::vector<std::shared_ptr<Table5D> > >& innert = config.table5d();
   TRACE("size1 " << innert.size());
   TRACE("size2 " << innert[0].size());
-  const float inner = innert[type1][type2]->linear_interpolation(s1, s2, e1, e2, e3);
+  const double sigma = model_params.select(sigma_index()).mixed_values()[stype1][stype2];
+  const float inner = sigma*innert[tabtype1][tabtype2]->linear_interpolation(s1, s2, e1, e2, e3);
   TRACE("inner " << inner);
   double en = 0.;
   if (squared_distance < inner*inner) {
@@ -241,18 +257,19 @@ double VisitModelInnerTable::compute_aniso(const int type1, const int type2,
   } else if (ignore_energy_) {
     en = 0.;
   } else {
-    const double delta = delta_[type1][type2];
+    const double delta = sigma*delta_[tabtype1][tabtype2];
     const double outer = inner + delta;
     TRACE("delta " << delta);
     TRACE("outer " << outer);
     if (squared_distance < outer*outer) {
-      const double gamma = gamma_[type1][type2];
+      const double gamma = gamma_[tabtype1][tabtype2];
+      const double epsilon = model_params.select(epsilon_index()).mixed_values()[stype1][stype2];
       TRACE("gamma " << gamma);
       const std::vector<std::vector<std::shared_ptr<Table6D> > >& energyt = config.table6d();
       if ((std::abs(gamma) < NEAR_ZERO)) {
-        en = -1;
+        en = -epsilon;
       } else if (is_energy_table(energyt)) {
-        const double smooth = smoothing_distance_[type1][type2];
+        const double smooth = sigma*smoothing_distance_[tabtype1][tabtype2];
         const double rhg = std::pow(inner, gamma);
         const double rcg = std::pow(outer - smooth, gamma);
         const double rg = std::pow(squared_distance, 0.5*gamma);
@@ -262,7 +279,7 @@ double VisitModelInnerTable::compute_aniso(const int type1, const int type2,
         }
         TRACE("z " << z);
         if (z > 1.) {
-          en = energyt[type1][type2]->linear_interpolation(s1, s2, e1, e2, e3, 1.);
+          en = epsilon*energyt[tabtype1][tabtype2]->linear_interpolation(s1, s2, e1, e2, e3, 1.);
           const double dx = outer - std::sqrt(squared_distance);
           TRACE("dx " << dx);
           if (dx > smooth && dx < smooth + 1e-5) {
@@ -273,12 +290,98 @@ double VisitModelInnerTable::compute_aniso(const int type1, const int type2,
           }
         } else {
           ASSERT(z >= 0 && z <= 1, "z: " << MAX_PRECISION << z);
-          en = energyt[type1][type2]->linear_interpolation(s1, s2, e1, e2, e3, z);
+          en = epsilon*energyt[tabtype1][tabtype2]->linear_interpolation(s1, s2, e1, e2, e3, z);
         }
       }
     }
   }
+  TRACE("en: " << en);
   return en;
+}
+
+bool VisitModelInnerTable::is_flip_(const double xpos, const int part1_index,
+    const int part2_index, int * type1, int * type2) {
+  bool flip = false;
+  // enforce type1 <= type2 to avoid redundant tables and keep the reference
+  // as the smallest possible type.
+  // also, if types are the same, and x>0(note,rel is inv), flip 1 and 2
+  if (*type1 > *type2) {
+    flip = true;
+  } else if (*type1 == *type2) {
+    if (xpos > 0) {
+      flip = true;
+    } else if (xpos == 0) {
+      if (part1_index > part2_index) {
+        flip = true;
+      }
+    }
+  }
+  if (flip) {
+    feasst_swap(type1, type2);
+  }
+  TRACE("flip " << flip);
+  return flip;
+}
+
+void VisitModelInnerTable::set_sph(const int part1_index,
+    const int part2_index, const Site& site1, const Site& site2,
+    const Configuration * config, int * type1, int * type2, Position * relative,
+    bool * flip) {
+  *flip = is_flip_(relative->coord(0), part1_index, part2_index, type1, type2);
+
+  if (rot1_.num_rows() == 0) {
+    rot1_.set_size(config->dimension(), config->dimension());
+  }
+
+  // obtain the inverse rotation matrix that sets the reference frame on site 1
+  if (*flip) {
+    site2.euler().compute_rotation_matrix(&rot1_);
+  } else {
+    site1.euler().compute_rotation_matrix(&rot1_);
+  }
+  rot1_.transpose();
+  TRACE("rot1 " << rot1_.str());
+
+  // obtain the relative orientation of the centers in spherical coordinates
+  if (!*flip) {
+    relative->multiply(-1); // r12 point toward 1, so reverse direction.
+  }
+  if (sph_.size() == 0) {
+    sph_.set_to_origin(config->dimension());
+    pos1_.set_to_origin(config->dimension());
+    pos2_.set_to_origin(config->dimension());
+  }
+  pos1_ = *relative;
+  TRACE("rot1_ " << rot1_.str());
+  TRACE("pos1_ " << pos1_.str());
+  TRACE("rel " << relative->str());
+  rot1_.multiply(*relative, &pos1_);
+  TRACE("pos1 " << pos1_.str());
+  pos1_.spherical(&sph_);
+  TRACE("sph " << sph_.str());
+}
+
+void VisitModelInnerTable::set_sph_euler(const int part1_index,
+    const int part2_index, const Site& site1, const Site& site2,
+    const Configuration * config, int * type1, int * type2, Position * relative,
+    bool * flip) {
+  set_sph(part1_index, part2_index, site1, site2, config, type1, type2, relative,
+    flip);
+
+  // obtain the relative orientation of site 2 in frame of site 1.
+  if (rot2_.num_rows() == 0) {
+    rot2_.set_size(config->dimension());
+  }
+  if (*flip) {
+    site1.euler().compute_rotation_matrix(&rot2_);
+  } else {
+    site2.euler().compute_rotation_matrix(&rot2_);
+  }
+  TRACE("rot2_.size():" << rot2_.num_rows());
+  TRACE("rot3_.size():" << rot3_.num_rows());
+  rot1_.multiply(rot2_, &rot3_, &pos1_, &pos2_);
+  euler_.set(rot3_);
+  TRACE("euler " << euler_.str());
 }
 
 void VisitModelInnerTable::compute(
@@ -299,19 +402,39 @@ void VisitModelInnerTable::compute(
   const Site& site1 = part1.site(site1_index);
   const Particle& part2 = config->select_particle(part2_index);
   const Site& site2 = part2.site(site2_index);
+
+  // check if either site is physical
+  TRACE("physical? " << site1.is_physical() << " " << site2.is_physical());
+  if (!site1.is_physical() || !site2.is_physical()) {
+    return;
+  }
+
   clear_ixn(part1_index, site1_index, part2_index, site2_index);
   TRACE("aniso_index_ " << aniso_index_);
   const ModelParam& aniso = model_params.select(aniso_index_);
   int type1 = site1.type();
   int type2 = site2.type();
 
-  // check if sites are anisotropic
+  // check if either site is anisotropic
   TRACE("type1 " << type1)
   TRACE("type2 " << type2);
   TRACE("aniso " << aniso.value(type1) << " " << aniso.value(type2));
-  if (aniso.value(type1) < 0.5 || aniso.value(type2) < 0.5) {
+  bool is_type1_aniso = aniso.value(type1) > 0.5;
+  bool is_type2_aniso = aniso.value(type2) > 0.5;
+  if (!is_type1_aniso && !is_type2_aniso) {
     return;
   }
+
+  // convert site type to table type
+  int tabtype1 = t2index_[type1];
+  int tabtype2 = t2index_[type2];
+  if (tabtype1 == -1 || tabtype2 == -1) {
+    return;
+  }
+
+  // HWH if one is anisotropic and one is not, then put the anisotropic one first
+  // HWH determine if tabtype exists for the sites, otherwise do not continue
+  // HWH make sure tabtypes are flipped if applicable
 
   // check if sites are within the global cutoff
   const double cutoff = model_params.select(cutoff_index()).mixed_values()[type1][type2];
@@ -325,102 +448,52 @@ void VisitModelInnerTable::compute(
   }
   TRACE("inside global cut");
 
-  bool flip = false;
-  // enforce type1 <= type2 to avoid redundant tables and keep the reference
-  // as the smallest possible type.
-  // also, if types are the same, and x>0(note,rel is inv), flip 1 and 2
-  if (type1 > type2) {
-    flip = true;
-  } else if (type1 == type2) {
-    if (relative->coord(0) > 0) {
-      flip = true;
-    } else if (relative->coord(0) == 0) {
-      if (part1_index > part2_index) {
-        flip = true;
-      }
+  // compute scaled coordinates
+  const int dimen = config->dimension();
+  const bool is_2d = dimen == 2;
+  double s1, s2, e1, e2, e3;
+  const bool is_both = is_type1_aniso && is_type2_aniso;
+  bool flip;
+  if (is_both) {
+    if (is_2d) {
+      set_sph_euler(part1_index, part2_index, site1, site2, config, &type1, &type2, relative, &flip);
+      scaled_relative_orientation(sph_.coord(1), euler_.phi(), dimen, &s1, &e1);
+    } else {
+      set_sph_euler(part1_index, part2_index, site1, site2, config, &type1, &type2, relative, &flip);
+      scaled_relative_orientation(sph_.coord(1), sph_.coord(2), euler_.phi(), euler_.theta(), euler_.psi(),
+        &s1, &s2, &e1, &e2, &e3);
+    }
+  } else {
+    if (is_2d) {
+      set_sph(part1_index, part2_index, site1, site2, config, &type1, &type2, relative, &flip);
+      scaled_relative_orientation(sph_.coord(1), &s1);
+    } else {
+      set_sph(part1_index, part2_index, site1, site2, config, &type1, &type2, relative, &flip);
+      scaled_relative_orientation(sph_.coord(1), sph_.coord(2), dimen, &s1, &s2);
     }
   }
+
   if (flip) {
-    feasst_swap(&type1, &type2);
+    feasst_swap(&tabtype1, &tabtype2);
+    feasst_swap(&is_type1_aniso, &is_type2_aniso);
   }
-  TRACE("flip " << flip);
 
-  // obtain the inverse rotation matrix that sets the reference frame on site 1
-  if (flip) {
-    site2.euler().compute_rotation_matrix(&rot1_);
+  ASSERT(is_type1_aniso, "Anisotropic site needs to be the reference.");
+
+  double en;
+  if (is_both) {
+    if (is_2d) {
+      en = compute_aniso(tabtype1, tabtype2, squared_distance, s1, e1, *config, model_params, type1, type2);
+    } else {
+      en = compute_aniso(tabtype1, tabtype2, squared_distance, s1, s2, e1, e2, e3, *config, model_params, type1, type2);
+    }
   } else {
-    site1.euler().compute_rotation_matrix(&rot1_);
+    if (is_2d) {
+      en = compute_aniso(tabtype1, tabtype2, squared_distance, s1, *config, model_params, type1, type2);
+    } else {
+      en = compute_aniso(tabtype1, tabtype2, squared_distance, s1, s2, *config, model_params, type1, type2);
+    }
   }
-  rot1_.transpose();
-  TRACE("rot1 " << rot1_.str());
-
-  // obtain the relative orientation of the centers in spherical coordinates
-  if (!flip) {
-    relative->multiply(-1); // r12 point toward 1, so reverse direction.
-  }
-  if (sph_.size() == 0) {
-    sph_.set_to_origin(config->dimension());
-    pos1_.set_to_origin(config->dimension());
-    pos2_.set_to_origin(config->dimension());
-  }
-  pos1_ = *relative;
-  rot1_.multiply(*relative, &pos1_);
-  TRACE("pos1 " << pos1_.str());
-  pos1_.spherical(&sph_);
-  TRACE("sph " << sph_.str());
-
-  // obtain the relative orientation of site 2 in frame of site 1.
-  if (flip) {
-    site1.euler().compute_rotation_matrix(&rot2_);
-  } else {
-    site2.euler().compute_rotation_matrix(&rot2_);
-  }
-  rot1_.multiply(rot2_, &rot3_, &pos1_, &pos2_);
-  euler_.set(rot3_);
-  TRACE("euler " << euler_.str());
-
-  // obtain the scaled orientational coordinates
-  double s1 = 0;
-//  s1 = sph_.coord(1)/2/PI;
-  if (type1 == type2) {
-    s1 = sph_.coord(1)/PI;
-  } else {
-    s1 = sph_.coord(1)/2/PI;
-  }
-  if (s1 < 0) {
-    s1 += 1;
-  }
-  double s2 = sph_.coord(2)/PI;
-  const double e1 = euler_.phi()/2/PI + 0.5;
-  const double e2 = euler_.theta()/PI;
-  const double e3 = euler_.psi()/2/PI + 0.5;
-  TRACE("s1 " << s1 << " s2 " << s2 << " e1 " << e1 << " e2 " << e2 << " e3 " << e3);
-  ASSERT(s1 >= 0 && s1 <= 1, "s1: " << s1);
-  ASSERT(s2 >= 0 && s2 <= 1, "s2: " << s2);
-  ASSERT(e1 >= 0 && e1 <= 1, "e1: " << e1);
-  ASSERT(e2 >= 0 && e2 <= 1, "e2: " << e2);
-  ASSERT(e3 >= 0 && e3 <= 1, "e3: " << e3);
-
-//  // check the outer cutoff, if applicable.
-//  float outer = 0.;
-//  const bool global_outer = !is_outer();
-//  if (!global_outer) {
-//    outer = outer_[type1][type2].linear_interpolation(s1, s2, e1, e2, e3);
-//    TRACE("outer " << outer);
-//    if (squared_distance > outer*outer) {
-//      return;
-//    }
-//  }
-
-  // convert site type to table type
-  const int tabtype1 = t2index_[type1];
-  const int tabtype2 = t2index_[type2];
-  ASSERT(tabtype1 != -1, "site " << type1 << " is anisotropic but not "
-    << "included in VisitModelInnerTable.");
-  ASSERT(tabtype2 != -1, "site " << type2 << " is anisotropic but not "
-    << "included in VisitModelInnerTable.");
-
-  double en = compute_aniso(tabtype1, tabtype2, squared_distance, s1, s2, e1, e2, e3, *config);
   en *= weight;
   TRACE("en " << en);
   if (en != 0.) {

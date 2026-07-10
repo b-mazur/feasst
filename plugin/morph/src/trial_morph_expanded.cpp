@@ -22,23 +22,52 @@ class MapTrialMorphExpanded {
 
 static MapTrialMorphExpanded mapper_trial_morph_expanded_ = MapTrialMorphExpanded();
 
+std::vector<std::vector<int> > parse_morph_seq(argtype * args) {
+  std::vector<std::vector<int> > grow_seq;
+  const std::vector<std::string> states = split(feasst::str("morph_sequence", args), ',');
+  for (const auto& state : states) {
+    const std::vector<std::string> types = split(state, ';');
+    std::vector<int> seq;
+    for (const auto& type : types) {
+      seq.push_back(str_to_int(type));
+    }
+    grow_seq.push_back(seq);
+  }
+  return grow_seq;
+}
+
+TrialMorphExpanded::TrialMorphExpanded(argtype * args) : Trial(args) {
+  class_name_ = "TrialMorphExpanded";
+  std::vector<std::vector<int> > grow_seq = parse_morph_seq(args);
+  init_(grow_seq, *args);
+}
+TrialMorphExpanded::TrialMorphExpanded(argtype args) : TrialMorphExpanded(&args) {
+  //feasst_check_all_used(args);
+}
+
 TrialMorphExpanded::TrialMorphExpanded(
     const std::vector<std::vector<int> > grow_seq,
     argtype args) : Trial(&args) {
   class_name_ = "TrialMorphExpanded";
+  init_(grow_seq, args);
+}
+
+void TrialMorphExpanded::init_(const std::vector<std::vector<int> > grow_seq, argtype args) {
   bool add_previously = false;
   for (int step = 0;
        step < static_cast<int>(grow_seq.size());
        ++step) {
     const std::vector<int>& seq = grow_seq[step];
+    std::vector<std::string> grows, grow_morphs;
     argtype grow_args = args;
+    std::vector<std::string> shrinks, shrink_morphs;
     argtype shrink_args = args;
     bool add = false;
     bool remove = false;
     int num_removed = 0;
     int num_added = 0;
-    int noskipgstage = 0;
-    int noskipsstage = 0;
+    //int noskipgstage = 0;
+    //int noskipsstage = 0;
     for (int stage = 0; stage < static_cast<int>(seq.size()); ++stage) {
       // grow
       const int ptype0 = grow_seq[step][stage];
@@ -48,13 +77,16 @@ TrialMorphExpanded::TrialMorphExpanded(
         if (ptypem1 == -1) {
           add = true;
           ++num_added;
-          grow_args.insert({"particle_type" + str(noskipgstage), str(ptype0)});
+          grows.push_back(str(ptype0));
+          //grow_args.insert({"particle_type" + str(noskipgstage), str(ptype0)});
         } else {
           ASSERT(!add, "cant have add and morph in same stage");
-          grow_args.insert({"particle_type" + str(noskipgstage), str(ptypem1)});
-          grow_args.insert({"particle_type_morph" + str(noskipgstage), str(ptype0)});
+          grows.push_back(str(ptypem1));
+          //grow_args.insert({"particle_type" + str(noskipgstage), str(ptypem1)});
+          //grow_args.insert({"particle_type_morph" + str(noskipgstage), str(ptype0)});
+          grow_morphs.push_back(str(ptype0));
         }
-        ++noskipgstage;
+        //++noskipgstage;
       }
 
       // shrink
@@ -63,9 +95,10 @@ TrialMorphExpanded::TrialMorphExpanded(
         if (ptypem1 != -1) {
           remove = true;
           ++num_removed;
-          DEBUG("particle_type" + str(noskipsstage));
-          shrink_args.insert({"particle_type" + str(noskipsstage), str(ptypem1)});
-          ++noskipsstage;
+          //DEBUG("particle_type" + str(noskipsstage));
+          shrinks.push_back(str(ptypem1));
+          //shrink_args.insert({"particle_type" + str(noskipsstage), str(ptypem1)});
+          //++noskipsstage;
         }
       } else {
         int current_type, new_type;
@@ -78,23 +111,37 @@ TrialMorphExpanded::TrialMorphExpanded(
           new_type = grow_seq[step - 2][stage];
         }
         if (current_type != -1 && new_type != -1) {
-          shrink_args.insert({"particle_type" + str(noskipsstage),
-                              str(current_type)});
-          shrink_args.insert({"particle_type_morph" + str(noskipsstage),
-                              str(new_type)});
-          ++noskipsstage;
+          shrinks.push_back(str(current_type));
+          //shrink_args.insert({"particle_type" + str(noskipsstage),
+          //                    str(current_type)});
+          shrink_morphs.push_back(str(new_type));
+          //shrink_args.insert({"particle_type_morph" + str(noskipsstage),
+          //                    str(new_type)});
+          //++noskipsstage;
         }
       }
     }
     if (add) {
+      grow_args.insert({"particle_types", feasst_str(grows)});
+    } else {
+      grow_args.insert({"particle_type", feasst_str(grows)});
+      grow_args.insert({"particle_type_morph", feasst_str(grow_morphs)});
+    }
+    if (remove) {
+      shrink_args.insert({"particle_types", feasst_str(shrinks)});
+    } else {
+      shrink_args.insert({"particle_type", feasst_str(shrinks)});
+      shrink_args.insert({"particle_type_morph", feasst_str(shrink_morphs)});
+    }
+    DEBUG(str(grow_args));
+    if (add) {
       grow_args.insert({"shift", str(num_added)});
-      DEBUG(str(grow_args));
       grow_.push_back(MakeTrialAddMultiple(grow_args));
       DEBUG(str(grow_args));
       add = false;
       add_previously = true;
     } else {
-      grow_.push_back(std::make_shared<TrialMorph>(grow_args));
+      grow_.push_back(std::make_shared<TrialMorphOneWay>(grow_args));
       add_previously = false;
     }
     if (remove) {
@@ -103,7 +150,7 @@ TrialMorphExpanded::TrialMorphExpanded(
       shrink_.push_back(MakeTrialRemoveMultiple(shrink_args));
       remove = false;
     } else {
-      shrink_.push_back(std::make_shared<TrialMorph>(shrink_args));
+      shrink_.push_back(std::make_shared<TrialMorphOneWay>(shrink_args));
     }
   }
   current_state_ = 0;
@@ -112,7 +159,7 @@ TrialMorphExpanded::TrialMorphExpanded(
 void TrialMorphExpanded::precompute(Criteria * criteria,
     System * system) {
   Trial::precompute(criteria, system);
-  for (std::shared_ptr<Trial> g : grow_) g->precompute(criteria, system);
+  for (std::shared_ptr<Trial> gr : grow_) gr->precompute(criteria, system);
   for (std::shared_ptr<Trial> s : shrink_) s->precompute(criteria, system);
 }
 
@@ -144,10 +191,6 @@ bool TrialMorphExpanded::attempt(Criteria * criteria,
   }
   DEBUG("current_state: " << current_state_);
   return accepted;
-}
-
-std::shared_ptr<Trial> TrialMorphExpanded::create(std::istream& istr) const {
-  return std::make_shared<TrialMorphExpanded>(istr);
 }
 
 TrialMorphExpanded::TrialMorphExpanded(std::istream& istr) : Trial(istr) {

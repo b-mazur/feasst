@@ -17,18 +17,21 @@ std::string str(const std::string& key, const argtype& args) {
 std::pair<std::string, argtype> parse_line(const std::string line,
   argtype * variables,
   bool * assign_to_list) {
+  DEBUG("line: " << line);
   // variable replacement if not Let
   std::string new_line = line;
+  // remove anything after the # comment character
+  new_line = feasst::trim("#", line.c_str(), 0);
+  if (new_line.back() == '#') new_line.pop_back();
   if (variables) {
     for (const auto& pair : *variables) {
       std::stringstream ss3(line);
       std::string major3;
       ss3 >> major3;
-      if (major3 != "Let") {
-        replace(pair.first, pair.second, &new_line);
-      }
+      replace(pair.first, pair.second, &new_line);
     }
   }
+  DEBUG("new_line: " << new_line);
   std::stringstream ss(new_line);
   std::string major;
   ss >> major;
@@ -39,7 +42,9 @@ std::pair<std::string, argtype> parse_line(const std::string line,
     ASSERT(ss.str().find('=') != std::string::npos,
       "Let requires an \"=\" to define a variable value");
     ASSERT(ss.str().find('[') != std::string::npos,
-      "Let requires a [ to enclose a [variable].");
+      "Let requires a [ to enclose a [variable]. " <<
+      "Also check that the variable was not preivously defined. " <<
+      "Stopping at line:" << line);
     ASSERT(ss.str().find("]=") != std::string::npos,
       "Let requires a \"]=\" to enclose a [variable] and define its value.");
     std::stringstream ss2(new_line);
@@ -244,25 +249,27 @@ arglist parse_if(const arglist& list, int * first_end_if, int *last_if, int *las
       ASSERT(*last_else < *last_if, "found an Else without a corresponding If.");
       *last_else = iarg;
     } else if (arg.first == "If") {
+      ASSERT(arg.second.size() == 1, "If statement requires only one condition.");
       *last_if = iarg;
       DEBUG("true " << str(arg.second));
-      const auto pair1 = arg.second.find("defined");
-      const auto pair2 = arg.second.find("undefined");
-      ASSERT(arg.second.size() == 1 && (pair1 != arg.second.end() || pair2 != arg.second.end()),
-       "If syntax is \"If defined=?optional\" or \"If undefined=?opt\". " <<
-       "If statement requires only one condition.");
-      if (pair1 != arg.second.end()) {
-        if (pair1->second == "?") {
-          is_true = false;
-        } else {
-          is_true = true;
-        }
-      } else if (pair2 != arg.second.end()) {
-        if (pair2->second == "?") {
-          is_true = true;
-        } else {
-          is_true = false;
-        }
+      if (arg.second.begin()->first == arg.second.begin()->second) {
+        is_true = true;
+      } else {
+        const auto pair1 = arg.second.find("defined");
+        const auto pair2 = arg.second.find("undefined");
+        if (pair1 != arg.second.end()) {
+          if (pair1->second == "?") {
+            is_true = false;
+          } else {
+            is_true = true;
+          }
+        } else if (pair2 != arg.second.end()) {
+          if (pair2->second == "?") {
+            is_true = true;
+          } else {
+            is_true = false;
+	  }
+	}
       }
     }
   }
@@ -377,7 +384,7 @@ std::vector<arglist> parse_mcs(std::istream& is, argtype variables) {
   std::string line;
   while (std::getline(is, line)) {
     if (!line.empty() && line[0] != '#') {
-      if (line == "MonteCarlo") {
+      if (line == "MonteCarlo" || line.substr(0,7) == "Restart") {
         lists.push_back(list);
         list = arglist();
       } else {

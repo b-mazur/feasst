@@ -138,7 +138,7 @@ These classes include zero- and one-body interactions.
    confinement/doc/ZeroBackground_arguments
    confinement/doc/ModelHardShape_arguments
    confinement/doc/ModelLJShape_arguments
-   confinement/doc/ModelTableCart1DHard_arguments
+   confinement/doc/ModelTableCart1D_arguments
    shape/doc/ShapeFile_arguments
    shape/doc/Cuboid_arguments
    shape/doc/Cylinder_arguments
@@ -294,13 +294,13 @@ Actions
 .. toctree::
    :maxdepth: 1
 
-   monte_carlo/doc/Run_arguments
-   monte_carlo/doc/Remove_arguments
-   monte_carlo/doc/WriteCheckpoint_arguments
-   monte_carlo/doc/WriteModelParams_arguments
-   monte_carlo/doc/RefPotential_arguments
-   monte_carlo/doc/OptPotential_arguments
-   steppers/doc/WriteStepper_arguments
+   actions/doc/Run_arguments
+   actions/doc/Remove_arguments
+   actions/doc/WriteCheckpoint_arguments
+   actions/doc/WriteModelParams_arguments
+   actions/doc/RefPotential_arguments
+   actions/doc/OptPotential_arguments
+   actions/doc/WriteStepper_arguments
    example/doc/ActionExample_arguments
 
 Flat Histogram
@@ -345,8 +345,27 @@ Below is a list text interface changes that may affect older scripts.
 Backwards incompatibility should remain for deprecated interface on minor version changes.
 Renamed arguments are shown as Class::old_argument->new_argument.
 
+v0.25.18 to v0.25.19
+------------------------
+
+* added pip installation and feasst executable in Python environment Path
+* feasst-menu interactive tutorial
+* pyfeasst renamed feasst
+
+v0.25.17 to v0.25.18
+------------------------
+
+* Backmap::site[i]->sites
+* Backmap::fstprt[i]->fstprts
+
+v0.25.15 to v0.25.16
+------------------------
+
+* NeighborCriteria::site_type[0,1]_alt->site_type0 csv
+
 v0.25.13 to v0.25.14
 -----------------------
+
 * Fixed `issue <https://github.com/usnistgov/feasst/issues/29>`_ when the order of first appearance of site types in the "Sites" section of a particle file did not match the order in "Site Properties"
 
 v0.25.12 to v0.25.13
@@ -372,6 +391,15 @@ v0.25.12 to v0.25.13
 * TrialMorph::particle_type,particle_type_morph csv
 * VisitModelInnerServer::server_site[i]->server_sites csv
 * TrialSelect, Group and NeighborIndex,  also use names instead of integers
+
+v0.25.17 to v0.25.18
+-----------------------
+
+* Backmap::site[i]->sites
+* Backmap::fstprt[i]->fstprts
+* pyfeasst.fstio.procs_per_node->procs_per_job
+* pyfeasst.fstio.num_nodes->num_jobs
+* pyfeasst.fstio.node->job
 
 v0.25.11 to v0.25.12
 -----------------------

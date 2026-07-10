@@ -10,24 +10,23 @@ import argparse
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pyfeasst import fstio
-from pyfeasst import physical_constants
-from pyfeasst import macrostate_distribution
+from feasst import fstio
+from feasst import physical_constants
+from feasst import macrostate_distribution
 import launch_04_lj_tm_parallel
 
 def parse(temperature=525):
     """ Parse arguments from command line or change their default values. """
     params, args = launch_04_lj_tm_parallel.parse(
-          fstprt='/feasst/particle/spce_new.txt',
-          beta=1./(temperature*physical_constants.MolarGasConstant().value()/1e3), # mol/kJ
-          beta_mu=-8.14,
-          min_sweeps=5,
-          cubic_side_length=20,
-          max_particles=265,
-          window_alpha=1.5)
+        fstprt='/feasst/particle/spce_new.txt',
+        beta=1./(temperature*physical_constants.MolarGasConstant().value()/1e3), # mol/kJ
+        beta_mu=-8.14,
+        min_sweeps=5,
+        cubic_side_length=20,
+        max_particles=265,
+        window_alpha=1.5)
     params['script'] = __file__
     params['prefix'] = 'spce'
-    params['sim_id_file'] = params['prefix']+ '_sim_ids.txt'
     params['ewald_alpha'] = 5.6/params['cubic_side_length']
     params['system'] = """Configuration cubic_side_length={cubic_side_length} particle_type=spce:{fstprt}
 Potential VisitModel=Ewald alpha={ewald_alpha} kmax_squared=38
@@ -46,7 +45,7 @@ def post_process(params):
     if np.abs(params['beta'] - 0.22909020008138298) > 1e-5:
         return
     #lnpi = pd.read_csv(params['prefix']+'n0_lnpi.txt')
-    lnpi=macrostate_distribution.splice_files(prefix=params['prefix']+'n0s', suffix='_crit.csv', shift=False)
+    lnpi=macrostate_distribution.splice_files(prefix=params['prefix']+'j', suffix='_crit.csv', shift=False)
     lnpi=lnpi.dataframe()
     lnpi = pd.concat([lnpi, pd.read_csv(params['feasst_install']+'../plugin/flat_histogram/test/data/stat_spce_525.csv')], axis=1)
     lnpi['deltalnPI'] = lnpi.lnPI - lnpi.lnPI.shift(1)
@@ -63,8 +62,8 @@ def post_process(params):
 if __name__ == '__main__':
     parameters, arguments = parse()
     fstio.run_simulations(params=parameters,
-                          sim_node_dependent_params=launch_04_lj_tm_parallel.sim_node_dependent_params,
+                          sim_job_dependent_params=launch_04_lj_tm_parallel.sim_job_dependent_params,
                           write_feasst_script=launch_04_lj_tm_parallel.write_feasst_script,
                           post_process=post_process,
-                          queue_function=fstio.slurm_single_node,
+                          queue_function=fstio.slurm_single_job,
                           args=arguments)

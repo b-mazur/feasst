@@ -8,15 +8,13 @@ import argparse
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pyfeasst import fstio
-from pyfeasst import coarse_grain_pdb
+from feasst import fstio
+from feasst import coarse_grain_pdb
 
 def parse():
     """ Parse arguments from command line or change their default values. """
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--feasst_install', type=str, default='../../../build/',
-                        help='FEASST install directory (e.g., the path to build)')
-    parser.add_argument('--pdb_file', type=str, default="../../../pyfeasst/tests/1igt.pdb",
+    parser.add_argument('--pdb_file', type=str, default="../../../src/feasst/tests/1igt.pdb",
                         help='pdb file that describes a mAb')
     parser.add_argument('--tpc', type=int, default=int(1e5), help='trials per cycle, but not necessary num_particles')
     parser.add_argument('--equilibration_cycles', type=int, default=int(1e0),
@@ -25,17 +23,17 @@ def parse():
                         help='number of cycles for production')
     parser.add_argument('--hours_checkpoint', type=float, default=1, help='hours per checkpoint')
     parser.add_argument('--hours_terminate', type=float, default=1, help='hours until termination')
-    parser.add_argument('--procs_per_node', type=int, default=9, help='number of processors')
+    parser.add_argument('--num_jobs', type=int, default=9, help='Number of jobs in queue')
+    parser.add_argument('--procs_per_job', type=int, default=1, help='number of processors')
     parser.add_argument('--run_type', '-r', type=int, default=0,
                         help='0: run, 1: submit to queue, 2: post-process')
     parser.add_argument('--seed', type=int, default=-1,
                         help='Random number generator seed. If -1, assign random seed to each sim.')
     parser.add_argument('--max_restarts', type=int, default=0, help='Number of restarts in queue')
-    parser.add_argument('--num_nodes', type=int, default=1, help='Number of nodes in queue')
     parser.add_argument('--scratch', type=str, default=None,
                         help='Optionally write scheduled job to scratch/logname/jobid.')
     parser.add_argument('--queue_flags', type=str, default="", help='extra flags for queue (e.g., for slurm, "-p queue")')
-    parser.add_argument('--node', type=int, default=0, help='node ID')
+    parser.add_argument('--job', type=int, default=0, help='job ID')
     parser.add_argument('--queue_id', type=int, default=-1, help='If != -1, read args from file')
     parser.add_argument('--queue_task', type=int, default=0, help='If > 0, restart from checkpoint')
 
@@ -45,24 +43,10 @@ def parse():
     params = vars(args)
     params['script'] = __file__
     params['prefix'] = 'cg'
-    params['sim_id_file'] = params['prefix']+ '_sim_ids.txt'
     params['minutes'] = int(params['hours_terminate']*60) # minutes allocated on queue
     params['hours_terminate'] = 0.99*params['hours_terminate'] - 0.0333 # terminate before queue
     params['procs_per_sim'] = 1
-    params['num_sims'] = params['num_nodes']*params['procs_per_node']
-    return params, args
-
-def sim_node_dependent_params(params):
-    """ Set parameters that depent upon the sim or node here. """
-    if params['sim'] == 0: params['domain'] = 'fc'
-    if params['sim'] == 1: params['domain'] = 'fab1'
-    if params['sim'] == 2: params['domain'] = 'fab2'
-    if params['sim'] == 3: params['domain'] = 'fv1'
-    if params['sim'] == 4: params['domain'] = 'fv2'
-    if params['sim'] == 5: params['domain'] = 'ch1_1'
-    if params['sim'] == 6: params['domain'] = 'ch1_2'
-    if params['sim'] == 7: params['domain'] = 'ch2'
-    if params['sim'] == 8: params['domain'] = 'ch3'
+    params['num_sims'] = params['num_jobs']*params['procs_per_job']
 
     # From table S2 of https://doi.org/10.1016/j.xphs.2018.12.013
     # Heavy chains are B and D, while light chains are A and C, for fab1 and fab2, respectively.
@@ -79,42 +63,29 @@ def sim_node_dependent_params(params):
               'ch2': {'B': range(248, 361), 'D': range(248, 361)},
               'ch3': {'B': range(361, 475), 'D': range(361, 475)}}
 
+    def pdb2fstprt(fstprt, params, chains):
+        from pathlib import Path
+        partial = coarse_grain_pdb.subset(pdb_file=params['pdb_file'], chains=chains)
+        r_com = coarse_grain_pdb.center_of_mass(partial)/10 # divide all COM by 10 for Angstrom to nm
+        # avoid a race condition for each job to write the same file while other job is trying to read it.
+        if not Path(fstprt).is_file():
+            coarse_grain_pdb.pdb_to_fstprt(partial, fstprt)
+        return partial, r_com
+
     # 4 bead (fab1, fab2, fc and hinge)
-    fc = coarse_grain_pdb.subset(pdb_file=params['pdb_file'], chains=chains['fc'])
-    r_com_fc = coarse_grain_pdb.center_of_mass(fc)/10  # divide all COM by 10 for Angstrom to nm
-    hinge = coarse_grain_pdb.subset(pdb_file=params['pdb_file'], chains=chains['hinge'])
-    r_com_hinge = coarse_grain_pdb.center_of_mass(hinge)/10
-    fab1 = coarse_grain_pdb.subset(pdb_file=params['pdb_file'], chains=chains['fab1'])
-    r_com_fab1 = coarse_grain_pdb.center_of_mass(fab1)/10
-    fab2 = coarse_grain_pdb.subset(pdb_file=params['pdb_file'], chains=chains['fab2'])
-    r_com_fab2 = coarse_grain_pdb.center_of_mass(fab2)/10
-
-    coarse_grain_pdb.pdb_to_fstprt(hinge, '1igt_hinge.txt')
-    coarse_grain_pdb.pdb_to_fstprt(fc, '1igt_fc.txt')
-    coarse_grain_pdb.pdb_to_fstprt(fab1, '1igt_fab1.txt')
-    coarse_grain_pdb.pdb_to_fstprt(fab2, '1igt_fab2.txt')
-
+    hinge, r_com_hinge = pdb2fstprt('1igt_hinge.fstprt', params, chains['hinge'])
+    fc, r_com_fc = pdb2fstprt('1igt_fc.fstprt', params, chains['fc'])
+    fab1, r_com_fab1 = pdb2fstprt('1igt_fab1.fstprt', params, chains['fab1'])
+    fab2, r_com_fab2 = pdb2fstprt('1igt_fab2.fstprt', params, chains['fab2'])
+    
     # 7 bead (fv[1,2], ch1_[1,2], ch2, ch3 and hinge)
-    fv1 = coarse_grain_pdb.subset(pdb_file=params['pdb_file'], chains=chains['fv1'])
-    r_com_fv1 = coarse_grain_pdb.center_of_mass(fv1)/10
-    fv2 = coarse_grain_pdb.subset(pdb_file=params['pdb_file'], chains=chains['fv2'])
-    r_com_fv2 = coarse_grain_pdb.center_of_mass(fv2)/10
-    ch1_1 = coarse_grain_pdb.subset(pdb_file=params['pdb_file'], chains=chains['ch1_1'])
-    r_com_ch1_1 = coarse_grain_pdb.center_of_mass(ch1_1)/10
-    ch1_2 = coarse_grain_pdb.subset(pdb_file=params['pdb_file'], chains=chains['ch1_2'])
-    r_com_ch1_2 = coarse_grain_pdb.center_of_mass(ch1_2)/10
-    ch2 = coarse_grain_pdb.subset(pdb_file=params['pdb_file'], chains=chains['ch2'])
-    r_com_ch2 = coarse_grain_pdb.center_of_mass(ch2)/10
-    ch3 = coarse_grain_pdb.subset(pdb_file=params['pdb_file'], chains=chains['ch3'])
-    r_com_ch3 = coarse_grain_pdb.center_of_mass(ch3)/10
-
-    coarse_grain_pdb.pdb_to_fstprt(fv1, '1igt_fv1.txt')
-    coarse_grain_pdb.pdb_to_fstprt(fv2, '1igt_fv2.txt')
-    coarse_grain_pdb.pdb_to_fstprt(ch1_1, '1igt_ch1_1.txt')
-    coarse_grain_pdb.pdb_to_fstprt(ch1_2, '1igt_ch1_2.txt')
-    coarse_grain_pdb.pdb_to_fstprt(ch2, '1igt_ch2.txt')
-    coarse_grain_pdb.pdb_to_fstprt(ch3, '1igt_ch3.txt')
-
+    fv1, r_com_fv1 = pdb2fstprt('1igt_fv1.fstprt', params, chains['fv1'])
+    fv2, r_com_fv2 = pdb2fstprt('1igt_fv2.fstprt', params, chains['fv2'])
+    ch1_1, r_com_ch1_1 = pdb2fstprt('1igt_ch1_1.fstprt', params, chains['ch1_1'])
+    ch1_2, r_com_ch1_2 = pdb2fstprt('1igt_ch1_2.fstprt', params, chains['ch1_2'])
+    ch2, r_com_ch2 = pdb2fstprt('1igt_ch2.fstprt', params, chains['ch2'])
+    ch3, r_com_ch3 = pdb2fstprt('1igt_ch3.fstprt', params, chains['ch3'])
+    
     # compute the distances and angles between the COM of pairs and triplets of domains
     # compare with table S1 of https://doi.org/10.1016/j.xphs.2018.12.013
     fc_hinge = r_com_fc - r_com_hinge
@@ -164,21 +135,36 @@ def sim_node_dependent_params(params):
     rg2 /= len(hinge['x_coord'])
     print('2rg=sigma_hinge', 2*np.sqrt(rg2)/10, 'nm vs 1.52')
 
+    return params, args
+
+def sim_job_dependent_params(params):
+    """ Set parameters that depent upon the sim or job here. """
+    if params['sim'] == 0: params['domain'] = 'fc'
+    if params['sim'] == 1: params['domain'] = 'fab1'
+    if params['sim'] == 2: params['domain'] = 'fab2'
+    if params['sim'] == 3: params['domain'] = 'fv1'
+    if params['sim'] == 4: params['domain'] = 'fv2'
+    if params['sim'] == 5: params['domain'] = 'ch1_1'
+    if params['sim'] == 6: params['domain'] = 'ch1_2'
+    if params['sim'] == 7: params['domain'] = 'ch2'
+    if params['sim'] == 8: params['domain'] = 'ch3'
+
 def write_feasst_script(params, script_file):
     """ Write fst script for a single simulation with keys of params {} enclosed. """
     with open(script_file, 'w', encoding='utf-8') as myfile:
         myfile.write("""
 MonteCarlo
 RandomMT19937 seed={seed}
-Configuration cubic_side_length=200 particle_type=domain:1igt_{domain}.txt add_num_domain_particles 2 \
-    group=first,com first_particle_index=0 com_site_type=5
+Configuration cubic_side_length=200 particle_type=domain:1igt_{domain}.fstprt add_num_domain_particles=2 \
+    group=first,com first_particle_index=0 com_site_type=COM
 Potential Model=HardSphere VisitModel=VisitModelCell min_length=3.9 energy_cutoff=1e100
-RefPotential ref=hs Model=HardSphere sigma=0 sigma5=30 cutoff=0 cutoff5=30 group=com
+RefPotential ref=hs Model=HardSphere sigma=0 sigmaCOM=30 cutoff=0 cutoffCOM=30 group=com
 ThermoParams beta=1
 MayerSampling trials_per_cycle={tpc} cycles_to_complete={equilibration_cycles}
 TrialTranslate new_only=true ref=hs tunable_param=1 group=first
 TrialRotate new_only=true ref=hs tunable_param=40
 Checkpoint checkpoint_file={prefix}_{domain}_checkpoint.fst num_hours={hours_checkpoint} num_hours_terminate={hours_terminate}
+CheckEnergy trials_per_update={tpc} decimal_places=4
 
 # tune trial parameters
 Let [write]=trials_per_write={tpc} output_file={prefix}_{domain}
@@ -227,8 +213,8 @@ def post_process(params):
 if __name__ == '__main__':
     parameters, arguments = parse()
     fstio.run_simulations(params=parameters,
-                          sim_node_dependent_params=sim_node_dependent_params,
+                          sim_job_dependent_params=sim_job_dependent_params,
                           write_feasst_script=write_feasst_script,
                           post_process=post_process,
-                          queue_function=fstio.slurm_single_node,
+                          queue_function=fstio.slurm_single_job,
                           args=arguments)

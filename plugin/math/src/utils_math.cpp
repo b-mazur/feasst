@@ -62,4 +62,24 @@ double factorial(const double value) {
   return std::tgamma(value + 1);
 }
 
+bool is_equal_within_decimal_places(const double u1, const double u2,
+                                    const int decimal_places) {
+  const double max_abs = std::max(std::abs(u1), std::abs(u2));
+  const double tol = std::pow(10, -decimal_places);
+  if (std::abs(u1 - u2)/max_abs > tol && max_abs > tol) {
+    return false;
+  }
+  return true;
+}
+
+std::vector<double> range(const double lower, const double upper, const int num) {
+  std::vector<double> xs(num);
+  xs[0] = lower;
+  const double dx = (upper - lower) / static_cast<double>(num - 1);
+  for (int i = 1; i < num; ++i) {
+    xs[i] = xs[i - 1] + dx;
+  }
+  return xs;
+}
+
 }  // namespace feasst

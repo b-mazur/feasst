@@ -6,7 +6,8 @@
 #include "configuration/include/domain.h"
 #include "shape/include/slab_sine.h"
 #include "shape/include/formula_sine_wave.h"
-#include "confinement/include/model_table_cartesian.h"
+#include "confinement/include/model_table_cartesian_3d_integr.h"
+#include "confinement/include/model_table_cartesian_1d_hard.h"
 
 namespace feasst {
 
@@ -28,10 +29,10 @@ TEST(ModelTableCart3DIntegr, SineSlabTable_LONG) {
       {"average_bound1", "5"}}).get(),
     *domain,
     MakeRandomMT19937({{"seed", "123"}}).get(),
-    { {"alpha0", "6"},
-      {"epsilon0", "-1"},
-      {"alpha1", "12"},
-      {"epsilon1", "1"},
+    { {"wall_alpha0", "6"},
+      {"wall_epsilon0", "-1"},
+      {"wall_alpha1", "12"},
+      {"wall_epsilon1", "1"},
       {"max_radius", "10"},
       {"num_shells", "10"},
       {"points_per_shell", "10"}});
@@ -57,15 +58,15 @@ TEST(ModelTableCart3DIntegr, SineSlabTable_TXT_LONG) {
   #endif // _OPENMP
     {"shape_file", "../plugin/confinement/test/data/shape.txt"},
     {"random", "RandomMT19937"},
-    {"alpha0", "6"},
-    {"epsilon0", "-1"},
-    {"alpha1", "12"},
-    {"epsilon1", "1"},
+    {"wall_alpha0", "6"},
+    {"wall_epsilon0", "-1"},
+    {"wall_alpha1", "12"},
+    {"wall_epsilon1", "1"},
     {"max_radius", "10"},
     {"num_shells", "10"},
     {"points_per_shell", "10"}});
   auto config = MakeConfiguration({{"cubic_side_length", "20"}});
-  hamaker->precompute(*config);
+  hamaker->precompute(config.get());
   MakeCheckpoint({{"checkpoint_file", "tmp/sine_slab_table"}})->write(hamaker->table());
   ModelTableCart3DIntegr hamaker2 = test_serialize(*hamaker);
   hamaker2.write("tmp/table3d_out.txt");

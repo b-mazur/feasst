@@ -6,11 +6,26 @@
 
 namespace feasst {
 
+Acceptance::Acceptance(const std::string& trial_class) {
+  trial_class_ = trial_class;
+  reset();
+}
 Acceptance::~Acceptance() {}
 
 double Acceptance::ln_metropolis_prob() const {
   ASSERT(!std::isinf(ln_metropolis_prob_), "ln_metropolis_prob_ is inf");
   return ln_metropolis_prob_;
+}
+
+void Acceptance::set_ln_metropolis_prob(const double prob) {
+  ASSERT(!std::isinf(prob), "prob is inf");
+  ln_metropolis_prob_ = prob;
+}
+
+/// Add to the above quantity.
+void Acceptance::add_to_ln_metropolis_prob(const double prob) {
+  ASSERT(!std::isinf(prob), "prob is inf");
+  ln_metropolis_prob_ += prob;
 }
 
 void Acceptance::reset() {
@@ -34,9 +49,10 @@ void Acceptance::reset() {
   macrostate_shift_type_.resize(1);
   macrostate_shift_type_[0] = 0.;
   perturbed_.clear();
-  perturbed_.resize(2);  // maximum number of configs
+  perturbed_.resize(3);  // maximum number of configs
   perturbed_[0] = std::make_shared<Select>();
   perturbed_[1] = std::make_shared<Select>();
+  perturbed_[2] = std::make_shared<Select>();
 }
 
 void Acceptance::add_to_perturbed(const Select& select, const int config) {

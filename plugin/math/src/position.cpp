@@ -376,4 +376,50 @@ double Position::torsion_angle_radians(const Position& rj, const Position& rk,
   return angle;
 }
 
+void fix_(double * s) {
+  if (*s < 0 && *s > -1e-8) {
+    *s = 0;
+  } else if (*s > 1. && *s < 1+1e-8) {
+    *s = 1.;
+  } else {
+    if (*s < 0.) {
+      *s += 1.;
+    }
+    if (*s > 1.) {
+      *s -= 1.;
+    }
+  }
+}
+
+void scaled_relative_orientation(const double stheta, double * s1) {
+  *s1 = stheta/2./PI;
+  fix_(s1);
+}
+
+void scaled_relative_orientation(const double stheta, const double sphi,
+    const int dimen, double * s1, double * s2) {
+  scaled_relative_orientation(stheta, s1);
+  if (dimen == 3) {
+    *s2 = sphi/PI;
+  } else if (dimen == 2) {
+    *s2 = sphi/2./PI + 0.5;
+  } else {
+    FATAL("unrecognized dimension: " << dimen);
+  }
+  fix_(s2);
+}
+
+void scaled_relative_orientation(const double stheta, const double sphi, const double ephi, const double etheta, const double epsi, double * s1, double * s2, double * e1, double * e2, double *e3) {
+  scaled_relative_orientation(stheta, sphi, 3, s1, s2);
+  *e1 = ephi/2/PI + 0.5;
+  *e2 = etheta/PI;
+  *e3 = epsi/2/PI + 0.5;
+  TRACE("s1 " << *s1 << " s2 " << *s2 << " e1 " << *e1 << " e2 " << *e2 << " e3 " << *e3);
+  ASSERT(*s1 >= 0 && *s1 <= 1, "*s1: " << *s1);
+  ASSERT(*s2 >= 0 && *s2 <= 1, "*s2: " << *s2);
+  ASSERT(*e1 >= 0 && *e1 <= 1, "*e1: " << *e1);
+  ASSERT(*e2 >= 0 && *e2 <= 1, "*e2: " << *e2);
+  ASSERT(*e3 >= 0 && *e3 <= 1, "*e3: " << *e3);
+}
+
 }  // namespace feasst

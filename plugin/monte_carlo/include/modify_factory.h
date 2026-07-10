@@ -13,6 +13,7 @@ class TimerRDTSC;
 
 /**
   Contains multiple Modify objects.
+  This class is for developers.
  */
 class ModifyFactory : public Modify {
  public:
@@ -54,6 +55,8 @@ class ModifyFactory : public Modify {
 
   /// Return timer
   const TimerRDTSC * const timer() const { return timer_.get(); }
+
+  void synchronize_(const Modify& modify) override;
 
   std::string class_name() const override {
     return std::string("ModifyFactory"); }

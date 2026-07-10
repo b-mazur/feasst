@@ -11,7 +11,10 @@ class Matrix;
 class RotationMatrix;
 
 /**
-  There are many ambiguities in Euler angle and rotation matrix definitions.
+  Euler is for 3D space.
+  For 2D, the first angle is simply used as a polar orietation in the range of
+  -pi to pi.
+  For 3D, there are many ambiguities in Euler angle and rotation matrix definitions.
   See https://en.wikipedia.org/wiki/Euler_angles
   and https://en.wikipedia.org/wiki/Rotation_matrix#Ambiguities
 
@@ -62,7 +65,13 @@ class Euler {
   void set(const double phi, const double theta, const double psi) {
     phi_ = phi; theta_ = theta; psi_ = psi; }
 
-  /// Set the Euler angles from RotationMatrix.
+  /**
+    Set the Euler angles from RotationMatrix.
+    The use of atan2 ensures that phi and psi are in the range of -pi to pi,
+    while acos ensures theta is in the range of 0 to pi.
+    In 2D, phi is determined using atan2 in range -pi to pi, while theta and
+    psi are set to zero.
+   */
   void set(const Matrix& matrix);
 
   /// Return the first angle [-pi, pi] about the z-axis.
@@ -75,6 +84,8 @@ class Euler {
   double psi() const { return psi_; }
 
   /// Compute a RotationMatrix from Euler angles.
+  /// Determine the dimensionality by the size of the matrix.
+  /// If matrix has no size, then assume three dimensional.
   void compute_rotation_matrix(RotationMatrix * matrix) const;
 
   /// Return true if equal.

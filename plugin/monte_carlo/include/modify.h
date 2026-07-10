@@ -15,8 +15,8 @@ class MonteCarlo;
 class TrialFactory;
 
 /**
-  Perform an action every so many trials that may change the system, criteria
-  or trials.
+  Perform an Action every so many attempted trials that may change the System,
+  Criteria or Trials.
  */
 class Modify : public Stepper {
  public:
@@ -41,6 +41,8 @@ class Modify : public Stepper {
   virtual const Modify& modify(const int index) const;
   virtual Modify * get_modify(const int index);
 
+  virtual void synchronize_(const Modify& modify) { data_ = modify.data(); }
+
   // serialization
   std::string class_name() const override { return std::string("Modify"); }
   virtual void serialize(std::ostream& ostr) const;
@@ -54,20 +56,6 @@ class Modify : public Stepper {
 
   // HWH only used by ModifyFactory
   void check_update_(MonteCarlo * mc);
-};
-
-/**
-  This Modify does not perform writes.
- */
-class ModifyUpdateOnly : public Modify {
- public:
-  explicit ModifyUpdateOnly(argtype * args);
-
-  void set_trials_per_write(const int trials) override;
-
-  void set_trials_per(const int trials) { set_trials_per_update(trials); }
-
-  explicit ModifyUpdateOnly(std::istream& istr) : Modify(istr) {}
 };
 
 }  // namespace feasst

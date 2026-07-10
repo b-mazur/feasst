@@ -58,7 +58,7 @@ class Position {
     See https://mathworld.wolfram.com/SphericalCoordinates.html
     Spherical coordinates are defined as follows:
     The first coordinate is rho >= 0. rho is the distance from origin.
-    The second coordinate is theta.
+    The second coordinate is theta, 0 <= theta <= 2PI.
     theta is the angle between x-axis and projection of the vector on x-y plane.
     In 3D, the third and final coordinate is phi, 0 <= phi <= PI.
     phi is the angle between z-axis and line.
@@ -234,6 +234,27 @@ inline std::shared_ptr<Position> MakePosition(std::vector<double> vec) {
 inline std::shared_ptr<Position> MakePosition(const int dimension) {
   return std::make_shared<Position>(dimension);
 }
+
+/// Given the relative orientaiton of one anisotropic rigid body and an
+/// isotropic particle based on the polar and azimuthal angle of spherical
+/// coordinates, return the scaled coordinates from 0-1.
+/// If 3d, two angles means probe is isotropic, and s2max = PI
+/// If 2d, two angles means probe is anisotropic, and s2max = 2*PI
+void scaled_relative_orientation(const double stheta, const double sphi,
+  const int dimen, double * s1, double * s2);
+
+/// Given the relative orientaiton of two rigid bodies based on the polar and
+/// azimuthal angle of spherical coordinates, and three Euler angles,
+/// return the scaled coordinates from 0-1.
+void scaled_relative_orientation(const double stheta, const double sphi,
+  const double ephi, const double etheta, const double epsi,
+  double * s1, double * s2, double * e1,
+  double * e2, double *e3);
+
+/// Given the relative orientaiton of one anisotropic 2D rigid body and an
+/// isotropic particle based on the polar angle in 2d polar coodinates,
+/// return the scaled coordinates from 0-1.
+void scaled_relative_orientation(const double stheta, double * s1);
 
 }  // namespace feasst
 

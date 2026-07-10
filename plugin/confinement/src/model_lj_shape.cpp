@@ -78,7 +78,7 @@ ModelLJShape::ModelLJShape(std::istream& istr)
   feasst_deserialize_fstobj(&mixed_epsilon_, istr);
 }
 
-double ModelLJShape::energy(const double epsilon,
+double ModelLJShape::en(const double epsilon,
               const double sigma,
               const double distance) const {
   TRACE("epsilon: " << epsilon);
@@ -87,9 +87,9 @@ double ModelLJShape::energy(const double epsilon,
   return epsilon * std::pow(sigma/(distance + delta_), alpha_);
 }
 
-void ModelLJShape::precompute(const Configuration& config) {
+void ModelLJShape::precompute(Configuration * config) {
   ModelOneBody::precompute(config);
-  const ModelParams& existing = config.model_params();
+  const ModelParams& existing = config->model_params();
   if (std::abs(wall_sigma_) > NEAR_ZERO && mixed_sigma_.size() == 0) {
     //mixed_sigma_ = Sigma();  // reset in case multiple precompute
     const ModelParam& fluid_sig = existing.select("sigma");
@@ -111,7 +111,7 @@ void ModelLJShape::precompute(const Configuration& config) {
     DEBUG("mixed eps " << mixed_epsilon_.str());
     ASSERT(mixed_epsilon_.size() == fluid_eps.size(), "error");
   }
-  // compute shift after possible mixing with all parameters
+  // compute shift after possible combining rules with all parameters
   shift_->set_model(this); // note the model is used here for the computation
   shift_->set_param(existing);
   shift_->set_model(NULL); // remove model immediately
@@ -141,8 +141,11 @@ double ModelLJShape::energy(
   const double distance = -shape()->nearest_distance(wrapped_site);
   TRACE("distance: " << distance);
   const int type = site.type();
+  TRACE("type: " << type);
   const double cutoff = model_params.select(cutoff_index()).value(type);
+  TRACE("cutoff: " << cutoff);
   const double eps = epsilon(type, model_params);
+  TRACE("eps: " << eps);
   if (distance <= NEAR_ZERO && std::abs(eps) > NEAR_ZERO) {
     TRACE(MAX_PRECISION << distance << " " << eps);
     return NEAR_INFINITY;
@@ -150,14 +153,15 @@ double ModelLJShape::energy(
     return 0.;
   } else {
     const double sig = sigma(type, model_params);
-    const double en = energy(eps, sig, distance);
+    TRACE("sig: " << sig);
+    const double e = en(eps, sig, distance);
     if (disable_shift_) {
-      TRACE("en " << en);
-      return en;
+      TRACE("e " << e);
+      return e;
     } else {
       TRACE("shift " << shift_->value(type));
-      TRACE("en " << en - shift_->value(type));
-      return en - shift_->value(type);
+      TRACE("e " << e - shift_->value(type));
+      return e - shift_->value(type);
     }
   }
 }
@@ -171,7 +175,7 @@ double ModelLJShapeEnergyAtCutoff::compute(const int type1, const ModelParams& m
   TRACE("cut " << cutoff);
   double en = 0.;
   if (cutoff > 0) {
-    en = model_->energy(eps, sig, cutoff);
+    en = model_->en(eps, sig, cutoff);
   }
   TRACE("en " << en);
   return en;

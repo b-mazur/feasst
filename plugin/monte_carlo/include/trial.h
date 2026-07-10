@@ -21,10 +21,13 @@ class TrialStage;
 
 typedef std::map<std::string, std::string> argtype;
 
-/**
+/*
   A trial contains a number of TrialStages.
   The Acceptance is computed as the stages are enacted, and then sent to
   Criteria to decide if the trial is accepted or rejected.
+ */
+/**
+  A Monte Carlo Trial samples the system by attempting a random perturbation.
  */
 class Trial {
  public:
@@ -184,6 +187,7 @@ class Trial {
 
   // Return Acceptance, which is a temporary object.
   const Acceptance& accept() const;
+  const Acceptance * accept_ptr() const { return acceptance_.get(); }
 
   // Check if approximately equal to given trial.
   bool is_equal(const Trial& trial) const;

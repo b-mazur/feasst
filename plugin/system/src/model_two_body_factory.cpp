@@ -40,6 +40,7 @@ ModelTwoBodyFactory::ModelTwoBodyFactory(argtype * args) {
     std::stringstream key;
     key << "model" << model_index;
     while (used(key.str(), *args)) {
+      WARN("Deprecated ModelTwoBodyFactory::model[i]->models");
       const std::string model_name = str(key.str(), args);
       auto model = ModelTwoBody().factory(model_name, args);
       models_.push_back(model);
@@ -61,7 +62,7 @@ void ModelTwoBodyFactory::add(
   }
 }
 
-void ModelTwoBodyFactory::precompute(const Configuration& config) {
+void ModelTwoBodyFactory::precompute(Configuration * config) {
   for (const std::shared_ptr<Model>& model : models_) {
     model->precompute(config);
   }

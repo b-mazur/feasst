@@ -1,9 +1,9 @@
 
 .. toctree::
 
-   PerturbModel
-   ConstrainModelIndex
-   TrialModel
-   ComputeModel
    ModelExpanded
+   TrialModel
+   PerturbModel
+   ComputeModel
+   ConstrainModelIndex
    MacrostateModel

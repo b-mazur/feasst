@@ -2,8 +2,11 @@
 .. toctree::
 
    Anisotropic
+   ModelRecursiveTable
    Backmap
-   ContactObjective
-   TabulateTwoRigidBody3D
    VisitModelInnerTable
+   RecursiveTable
    VisitModelInnerNN
+   BuildRecursiveTable
+   Rotator
+   TabulateTwoRigidBody3D

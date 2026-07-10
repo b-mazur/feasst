@@ -11,6 +11,7 @@
 
 namespace feasst {
 
+class Position;
 class Random;
 
 typedef std::map<std::string, std::string> argtype;
@@ -21,6 +22,13 @@ Mayer-sampling Monte Carlo acceptance criteria as described in :footcite:t:`sing
 Extrapolation in temperature is performed as descirbed in :footcite:t:`hatch_communication:_2017`.
 The coefficients for the Taylor series extrapolation are written to file
 and include the factorial division.
+
+The RefPotential may need to be carefully adjusted when the tutorials are changed.
+Typically, the RefPotential is a HardSphere with a given ModelParams::sigma.
+For example, in <a href="../tutorial/tutorial_4_cgmab.html">this tutorial</a>, the size of the HardSphere RefPotential is given by "sigmaCOM=30 cutoffCOM=30".
+Too small of a sigma leads to high error bars because the RefPotential will not often be sampled while sampling the Potential.
+Too large of a sigma means the RefPotential will not be fully sampled while sampling the Potential, and therefore gives incorrect results.
+A more optimal value of sigma typically results in a mayer_ref() of approximately 0.3 to 0.5.
 
 References:
 
@@ -39,6 +47,11 @@ class MayerSampling : public Criteria {
       respect to beta. (default: 0).
     - training_file: if not empty, file name to write training data
       (default: empty).
+      Training data considers only the first site of the second particle,
+      assuming the first particle is centered on the origin.
+      Multisite particles are not currently supported.
+      If the site is isotropic, output is the squared distance and the energy.
+      Otherwise, spherical coordinates, euler angles and energy is output.
     - training_per_write: write every this many sets of data (default: 1e4).
     - Criteria arguments.
    */
@@ -113,6 +126,7 @@ class MayerSampling : public Criteria {
   std::string training_file_;
   std::vector<std::vector<double> > data_;
   int training_per_write_;
+  std::shared_ptr<Position> last_pos_;
 };
 
 inline std::shared_ptr<MayerSampling> MakeMayerSampling(

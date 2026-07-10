@@ -393,8 +393,8 @@ void System::synchronize_(const System& system, const std::vector<std::shared_pt
   for (int config = 0; config < num_configurations(); ++config) {
     configurations_[config]->synchronize_(system.configuration(config),
       *perturbed[config]);
-    unoptimized_[config].synchronize_(system.unoptimized(), *perturbed[config]);
-    optimized_[config].synchronize_(system.optimized(), *perturbed[config]);
+    unoptimized_[config].synchronize_(system.unoptimized(config), *perturbed[config]);
+    optimized_[config].synchronize_(system.optimized(config), *perturbed[config]);
     for (int ref = 0; ref < num_references(config); ++ref) {
       references_[config][ref].synchronize_(system.references()[config][ref], *perturbed[config]);
     }
@@ -534,7 +534,7 @@ const Configuration& System::configuration(const std::string& name) const {
   return *configurations_[configuration_index(name)];
 }
 
-Configuration * System::configuration(const std::string& name) {
+Configuration * System::get_configuration(const std::string& name) {
   return configurations_[configuration_index(name)].get();
 }
 

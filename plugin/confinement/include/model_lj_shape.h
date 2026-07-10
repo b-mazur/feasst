@@ -5,6 +5,7 @@
 #include "configuration/include/model_params.h"
 #include "system/include/model_one_body.h"
 #include "shape/include/shape.h"
+#include "shape/include/shaped_entity.h"
 
 namespace feasst {
 
@@ -40,13 +41,13 @@ class ModelLJShape : public ModelOneBody,
     - alpha: set the exponent (default: 3.).
     - delta: set the delta parameter (default: 0.).
     - disable_shift: disable shifting of the potential to zero (default: false).
-    - wall_sigma: If != 0 (default: 0), use Lorentz-Berthelot mixing rules
+    - wall_sigma: If != 0 (default: 0), use Lorentz-Berthelot combining rules
       between this wall sigma and the fluid sigma.
       Otherwise, the sigma for each site type may be set with the argument
       Potential::sigma[i].
     - wall_epsilon: If != 0 (default: 0), use a slighly modified version of
-      Lorentz-Berthelot mixing rules between this wall epsilon and the fluid.
-      To account for negative epsilon (attractions), the mixing rule is
+      Lorentz-Berthelot combining rules between this wall epsilon and the fluid.
+      To account for negative epsilon (attractions), the combining rule is
       sign(wall_epsilon)sqrt(|wall_epsilon|*fluid_epsilon).
       Otherwise, the epsilon for each site type may be set with the argument
       Potential::epsilon[i].
@@ -63,7 +64,7 @@ class ModelLJShape : public ModelOneBody,
   ModelLJShape(std::shared_ptr<Shape> shape, argtype * args);
 
   /// Precompute the shift factor for optimization.
-  void precompute(const Configuration& config) override;
+  void precompute(Configuration * config) override;
 
   double energy(
     const Position& wrapped_site,
@@ -77,7 +78,7 @@ class ModelLJShape : public ModelOneBody,
   /// Return the epsilon (in case optionally mixed)
   double epsilon(const int site_type, const ModelParams& params);
 
-  double energy(const double epsilon, const double sigma,
+  double en(const double epsilon, const double sigma,
     const double distance) const;
 
   void serialize(std::ostream& ostr) const override;

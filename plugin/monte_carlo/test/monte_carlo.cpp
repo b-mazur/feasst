@@ -25,10 +25,10 @@
 #include "monte_carlo/include/trial_volume.h"
 #include "monte_carlo/include/trial_add.h"
 #include "monte_carlo/include/trial_translate.h"
-#include "monte_carlo/include/run.h"
-#include "monte_carlo/include/remove.h"
 #include "monte_carlo/include/convert_to_ref_potential.h"
 #include "monte_carlo/test/monte_carlo_benchmark.h"
+#include "actions/include/run.h"
+#include "actions/include/remove.h"
 #include "steppers/include/num_particles.h"
 #include "steppers/include/movie.h"
 #include "steppers/include/tune.h"
@@ -45,7 +45,7 @@ namespace feasst {
 
 TEST(MonteCarlo, serialize) {
   auto mc = MakeMonteCarlo({{
-    {"Configuration", {{"cubic_side_length", "8"}, {"particle_type0", "../particle/lj.txt"}}},
+    {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "lj:../particle/lj_new.txt"}}},
     {"Potential", {{"Model", "LennardJones"}}},
     {"ThermoParams", {{"beta", "1.2"}, {"chemical_potential", "1."}}},
     {"Metropolis", {{}}},
@@ -65,12 +65,12 @@ TEST(MonteCarlo, serialize) {
   EXPECT_EQ(mc2->modify(1).class_name(), "Tune");
 
   auto mc3 = MakeMonteCarlo({{
-    {"Configuration", {{"cubic_side_length", "8"}, {"particle_type0", "../particle/lj.txt"}}},
+    {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "lj:../particle/lj_new.txt"}}},
     {"Potential", {{"Model", "LennardJones"}}},
     {"ThermoParams", {{"beta", "1.2"}, {"chemical_potential", "1."}}},
     {"Metropolis", {{}}},
     {"TrialTranslate", {{"weight", "1."}, {"tunable_param", "1."}}},
-    {"TrialTransfer", {{"weight", "4."}, {"particle_type", "0"}}},
+    {"TrialTransfer", {{"weight", "4."}, {"particle_type", "lj"}}},
     {"Checkpoint", {{"num_hours", "0.0001"}, {"checkpoint_file", "tmp/ljrst"}}},
     {"Log", {{"trials_per_write", str(1e4)}, {"output_file", "tmp/lj.txt"}}},
     {"Movie", {{"trials_per_write", str(1e4)}, {"output_file", "tmp/lj.xyz"}}},
@@ -101,7 +101,7 @@ TEST(MonteCarlo, NVT_BENCHMARK_LONG) {
   auto mc = MakeMonteCarlo({{
       {"RandomMT19937", {{"seed", "123"}}},
       {"Configuration", {{"cubic_side_length", "8"},
-        {"particle_type0", "../particle/lj.txt"},
+        {"particle_type", "lj:../particle/lj_new.txt"},
         {"xyz_file", "../plugin/monte_carlo/test/data/bench.xyz"}}},
       {"Potential", {{"Model", "LennardJones"}}},
       //{"Potential", {{"Model", "LennardJones"}, {"VisitModel", "VisitModelOptLJ"}}},
@@ -170,13 +170,13 @@ TEST(MonteCarlo, NVT_SRSW) {
   const double rho = 1e-3;
   const double length = std::pow(static_cast<double>(nMol)/rho, 1./3.);
   auto mc = MakeMonteCarlo({{
-    {"Configuration", {{"cubic_side_length", str(length)}, {"particle_type0", "../particle/lj.txt"}}},
+    {"Configuration", {{"cubic_side_length", str(length)}, {"particle_type", "lj:../particle/lj_new.txt"}}},
     {"Potential", {{"Model", "LennardJones"}}},
     {"Potential", {{"VisitModel", "LongRangeCorrections"}}},
     {"ThermoParams", {{"beta", "1.2"}, {"chemical_potential", "1."}}},
     {"Metropolis", {{}}},
     {"TrialTranslate", {{"weight", "1."}, {"tunable_param", "1."}}},
-    {"TrialAdd", {{"particle_type", "0"}}},
+    {"TrialAdd", {{"particle_type", "lj"}}},
     {"Run", {{"until_num_particles", str(nMol)}}},
     {"Remove", {{"name_contains", "Add"}}},
     {"Log", {{"trials_per_write", "1e3"}, {"output_file", "tmp/lj.csv"}}},
@@ -197,13 +197,13 @@ TEST(MonteCarlo, NVT_SRSW) {
 
 TEST(MonteCarlo, GCMC) {
   auto mc = MakeMonteCarlo({{
-    {"Configuration", {{"cubic_side_length", "8"}, {"particle_type0", "../particle/lj.txt"}}},
+    {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "lj:../particle/lj_new.txt"}}},
     {"Potential", {{"Model", "LennardJones"}}},
     {"Potential", {{"VisitModel", "LongRangeCorrections"}}},
     {"ThermoParams", {{"beta", "1.2"}, {"chemical_potential", "-3"}}},
     {"Metropolis", {{}}},
     {"TrialTranslate", {{"weight", "1."}, {"tunable_param", "1."}}},
-    {"TrialTransfer", {{"weight", "4."}, {"particle_type", "0"}}},
+    {"TrialTransfer", {{"weight", "4."}, {"particle_type", "lj"}}},
     {"NumParticles", {{"trials_per_write", str(1e5)},
                       {"output_file", "tmp/ljnum.txt"}}},
     {"Log", {{"trials_per_write", str(1e4)}, {"output_file", "tmp/lj.txt"}}},
@@ -227,7 +227,7 @@ TEST(MonteCarlo, GCMC) {
 
 TEST(MonteCarlo, GCMC_cell) {
   auto mc = MakeMonteCarlo({{
-    {"Configuration", {{"cubic_side_length", "8"}, {"particle_type0", "../particle/lj.txt"}}},
+    {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "lj:../particle/lj_new.txt"}}},
     {"Potential", {{"Model", "LennardJones"}}},
     {"Potential", {{"VisitModel", "LongRangeCorrections"}}},
     {"RefPotential", {{"Model", "LennardJones"}, {"VisitModel", "VisitModelCell"}, {"min_length", "1"}}},
@@ -237,7 +237,7 @@ TEST(MonteCarlo, GCMC_cell) {
     {"CheckEnergy", {{"trials_per_update", "1e4"}, {"tolerance", "1e-9"}}},
     {"Tune", {{}}},
     {"ThermoParams", {{"beta", "1.2"}, {"chemical_potential", "-6"}}},
-    {"TrialTransfer", {{"particle_type", "0"}, {"num_steps", "4"}, {"reference_index", "0"}}},
+    {"TrialTransfer", {{"particle_type", "lj"}, {"num_steps", "4"}, {"reference_index", "0"}}},
     {"NumParticles", {{"trials_per_write", "1e5"},
                       {"output_file", "tmp/ljnum.txt"}}},
   }}, true);
@@ -252,7 +252,7 @@ TEST(MonteCarlo, GCMC_cell) {
 TEST(MonteCarlo, ConstrainNumParticles) {
   for (const double minimum : {0, 1}) {
     auto mc = MakeMonteCarlo({{
-      {"Configuration", {{"cubic_side_length", "8"}, {"particle_type0", "../particle/lj.txt"}, {"add_particles_of_type0", "1"}}},
+      {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "lj:../particle/lj_new.txt"}, {"add_num_lj_particles", "1"}}},
       {"Potential", {{"Model", "LennardJones"}}},
       {"Potential", {{"VisitModel", "LongRangeCorrections"}}},
       {"ThermoParams", {{"beta", "1.2"}, {"chemical_potential", "1."}}},
@@ -264,7 +264,7 @@ TEST(MonteCarlo, ConstrainNumParticles) {
       {"ThermoParams", {{"beta", "0.2"}, {"chemical_potential", "-20."}}},
       {"Metropolis", {{"Constraint", "ConstrainNumParticles"},
         {"minimum", str(minimum)}, {"maximum", str(minimum+1)}}},
-      {"TrialAddRemove", {{"particle_type", "0"}}},
+      {"TrialAddRemove", {{"particle_type", "lj"}}},
       {"NumParticles", {{"trials_per_write", "10000"}, {"output_file", "tmp/lj.csv"}}},
     }}, true);
     const int index = mc->num_analyzers() - 1;
@@ -284,7 +284,7 @@ TEST(MonteCarlo, ideal_gas_pressure_LONG) {
   const double volume = num/beta/pressure;
   auto mc = MakeMonteCarlo({{
     {"Configuration", {{"cubic_side_length", "8"},
-      {"particle_type", "../particle/atom.txt"},
+      {"particle_type", "atom:../particle/atom_new.txt"},
       {"add_particles_of_type0", str(num)},
       {"cutoff", "0"}}},
     {"Potential", {{"VisitModel", "DontVisitModel"}}},
@@ -303,16 +303,17 @@ TEST(MonteCarlo, ideal_gas_pressure_LONG) {
 
 TEST(MonteCarlo, lj_npt) {
   const int num = 10;
-  const double beta = 1.5, pressure = 0.002;
+  const double beta = 1.5, pressure = 0.001;
   const std::string trials_per = "1e0";
   auto mc = MakeMonteCarlo({{
-    {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "../particle/atom.txt"}}},
+    // {"RandomMT19937", {{"seed", "1757619601"}}},
+    {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "atom:../particle/atom_new.txt"}, {"cutoff", "2"}}},
     {"Potential", {{"Model", "LennardJones"}}},
     {"ThermoParams", {{"beta", str(beta)}, {"pressure", str(pressure)}, {"chemical_potential", "-1"}}},
     {"Metropolis", {{}}},
     {"TrialTranslate", {{}}},
     {"CheckEnergy", {{"trials_per_update", trials_per}, {"tolerance", "1e-4"}}},
-    {"TrialAdd", {{"particle_type", "0"}}},
+    {"TrialAdd", {{"particle_type", "atom"}}},
     {"Run", {{"until_num_particles", str(num)}}},
     {"Remove", {{"name", "TrialAdd"}}},
     {"TrialVolume", {{"tunable_param", "0.5"}}},
@@ -344,19 +345,19 @@ TEST(MonteCarlo, arglist_unrecognized) {
     CATCH_PHRASE("unused argument");
   );
   TRY(
-    MakeMonteCarlo({{{"Configuration", {{"particle_type0", "../particle/lj.txt"}, {"this_is_not", "an_expected_argument"}}}}}, true);
+    MakeMonteCarlo({{{"Configuration", {{"particle_type", "lj:../particle/lj_new.txt"}, {"this_is_not", "an_expected_argument"}}}}}, true);
     CATCH_PHRASE("unused argument");
   );
   TRY(
     MakeMonteCarlo({{
-      {"Configuration", {{"particle_type0", "../particle/lj.txt"}}},
+      {"Configuration", {{"particle_type", "lj:../particle/lj_new.txt"}}},
       {"Potential", {{"this_is_not", "an_expected_argument"}}}
     }}, true);
     CATCH_PHRASE("unused argument");
   );
   TRY(
     MakeMonteCarlo({{
-      {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "../particle/lj.txt"}}},
+      {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "lj:../particle/lj_new.txt"}}},
       {"Potential", {{"Model", "LennardJones"}}},
       {"ThermoParams", {{"this_is_not", "an_expected_argument"}}},
     }}, true);
@@ -364,7 +365,7 @@ TEST(MonteCarlo, arglist_unrecognized) {
   );
   TRY(
     MakeMonteCarlo({{
-      {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "../particle/lj.txt"}}},
+      {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "lj:../particle/lj_new.txt"}}},
       {"Potential", {{"Model", "LennardJones"}}},
       {"ThermoParams", {{"beta", "1"}}},
       {"Metropolis", {{"this_is_not", "an_expected_argument"}}},
@@ -373,7 +374,7 @@ TEST(MonteCarlo, arglist_unrecognized) {
   );
   TRY(
     MakeMonteCarlo({{
-      {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "../particle/lj.txt"}}},
+      {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "lj:../particle/lj_new.txt"}}},
       {"Potential", {{"Model", "LennardJones"}}},
       {"ThermoParams", {{"beta", "1"}}},
       {"Metropolis", {{}}},
@@ -383,7 +384,7 @@ TEST(MonteCarlo, arglist_unrecognized) {
   );
   TRY(
     MakeMonteCarlo({{
-      {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "../particle/lj.txt"}}},
+      {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "lj:../particle/lj_new.txt"}}},
       {"Potential", {{"Model", "LennardJones"}}},
       {"ThermoParams", {{"beta", "1"}}},
       {"Metropolis", {{}}},
@@ -394,7 +395,7 @@ TEST(MonteCarlo, arglist_unrecognized) {
   );
   TRY(
     MakeMonteCarlo({{
-      {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "../particle/lj.txt"}}},
+      {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "lj:../particle/lj_new.txt"}}},
       {"Potential", {{"Model", "LennardJones"}}},
       {"ThermoParams", {{"beta", "1"}}},
       {"Metropolis", {{}}},
@@ -406,7 +407,7 @@ TEST(MonteCarlo, arglist_unrecognized) {
   );
   TRY(
     MakeMonteCarlo({{
-      {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "../particle/lj.txt"}}},
+      {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "lj:../particle/lj_new.txt"}}},
       {"Potential", {{"Model", "LennardJones"}}},
       {"ThermoParams", {{"beta", "1"}}},
       {"Metropolis", {{}}},
@@ -423,8 +424,7 @@ TEST(MonteCarlo, argslist_order) {
   auto mc = MakeMonteCarlo({{
     {"RandomModulo", {{"seed", "123"}}},
     {"Configuration", {{"cubic_side_length", "8"},
-                       {"particle_type0", "../particle/lj.txt"},
-                       {"particle_type1", "../particle/atom.txt"}}},
+                       {"particle_type", "lj:../particle/lj_new.txt,atom:../particle/atom_new.txt"}}},
     {"Potential", {{"Model", "LennardJones"}}},
     {"ThermoParams", {{"beta", "0.1"}}},
     {"ThermoParams", {{"beta", "1.2"}}},
@@ -437,8 +437,7 @@ TEST(MonteCarlo, arglist) {
     {"Checkpoint", {{"checkpoint_file", "tmp/lj.fst"}}},
     {"RandomModulo", {{"seed", "123"}}},
     {"Configuration", {{"cubic_side_length", "8"},
-                       {"particle_type0", "../particle/lj.txt"},
-                       {"particle_type1", "../particle/atom.txt"}}},
+                       {"particle_type", "lj:../particle/lj_new.txt,atom:../particle/atom_new.txt"}}},
     {"Potential", {{"Model", "LennardJonesCutShift"}}},
     //{"Potential", {{"Model", "LennardJones"}}},
     //{"Potential", {{"VisitModel", "LongRangeCorrections"}}},
@@ -446,7 +445,7 @@ TEST(MonteCarlo, arglist) {
     {"Metropolis", {{}}},
     {"TrialTranslate", {{"tunable_param", "0.2"},
                         {"tunable_target_acceptance", "0.2"}}},
-    {"TrialAdd", {{"particle_type", "0"}}},
+    {"TrialAdd", {{"particle_type", "lj"}}},
     {"Log", {{"trials_per_write", str(1e2)}, {"output_file", "tmp/lj.txt"}}},
     {"Movie", {{"trials_per_write", str(1e2)}, {"output_file", "tmp/lj.xyz"}}},
     {"CheckEnergy", {{"trials_per_update", str(1e2)}, {"tolerance", "1e-8"}}},
@@ -487,11 +486,11 @@ TEST(MonteCarlo, gen_5_spce_in_triclinic) {
   auto mc = MakeMonteCarlo({{
     {"Configuration", {{"side_length", "22,22,22"},
       {"xy", "4"}, {"yz", "4"}, {"xz", "4"},
-      {"particle_type0", "../particle/spce.txt"}}},
+      {"particle_type", "spce:../particle/spce_new.txt"}}},
     {"Potential", {{"Model", "LennardJones"}}},
     {"ThermoParams", {{"beta", "1"}, {"chemical_potential", "-1"}}},
     {"Metropolis", {{}}},
-    {"TrialAdd", {{"particle_type", "0"}}},
+    {"TrialAdd", {{"particle_type", "spce"}}},
     {"Run", {{"until_num_particles", "5"}}},
   }}, true);
   FileXYZ().write_for_vmd("tmp/spce_triclinic.xyz", mc->configuration());
@@ -500,7 +499,7 @@ TEST(MonteCarlo, gen_5_spce_in_triclinic) {
 TEST(MonteCarlo, group_in_arglist) {
   auto mc = MakeMonteCarlo({{
     {"Configuration", {{"xyz_file", "../plugin/configuration/test/data/lj_sample_config_periodic4.xyz"},
-      {"particle_type", "lj:../particle/lj.txt"}, {"group0", "first"}, {"first_particle_index", "0"}}},
+      {"particle_type", "lj:../particle/lj_new.txt"}, {"group", "first"}, {"first_particle_index", "0"}}},
     {"Potential", {{"Model", "LennardJones"}}},
     {"ThermoParams", {{"beta", "1.2"}, {"chemical_potential", "1."}}},
     {"Metropolis", {{}}},
@@ -521,20 +520,22 @@ TEST(MonteCarlo, two_configs) {
   auto mc = MakeMonteCarlo({{
     //{"RandomMT19937", {{"seed", "1234"}}},
     {"Configuration", {{"xyz_file", "../plugin/configuration/test/data/lj_sample_config_periodic4.xyz"},
-      {"particle_type0", "../particle/lj.txt"}, {"group0", "first"}, {"first_particle_index", "0"}}},
+      {"particle_type", "lj:../particle/lj_new.txt"}, {"group", "first"}, {"first_particle_index", "0"},
+      {"name", "config1"}}},
     {"Configuration", {{"xyz_file", "../plugin/configuration/test/data/lj_sample_config_periodic4.xyz"},
-      {"particle_type0", "../particle/lj.txt"}, {"group0", "first"}, {"first_particle_index", "0"}}},
-    {"Potential", {{"Model", "LennardJones"}, {"configuration_index", "0"}}},
-    {"Potential", {{"Model", "LennardJones"}, {"configuration_index", "1"}}},
+      {"particle_type", "lj:../particle/lj_new.txt"}, {"group", "first"}, {"first_particle_index", "0"},
+      {"name", "config2"}}},
+    {"Potential", {{"Model", "LennardJones"}, {"config", "config1"}}},
+    {"Potential", {{"Model", "LennardJones"}, {"config", "config2"}}},
     {"ThermoParams", {{"beta", "100.2"}, {"chemical_potential", "1."}}},
     {"Metropolis", {{}}},
-    {"TrialTranslate", {{"configuration_index", "0"}}},
-    {"TrialTranslate", {{"configuration_index", "1"}}},
-    {"TrialTransfer", {{"particle_type", "0"}, {"configuration_index", "0"}}},
-    {"TrialTransfer", {{"particle_type", "0"}, {"configuration_index", "1"}}},
+    {"TrialTranslate", {{"config", "config1"}}},
+    {"TrialTranslate", {{"config", "config2"}}},
+    {"TrialTransfer", {{"particle_type", "lj"}, {"config", "config1"}}},
+    {"TrialTransfer", {{"particle_type", "lj"}, {"config", "config2"}}},
     {"Log", {{"trials_per_write", str(1e0)}, {"output_file", "tmp/lj.txt"}}},
-    {"Movie", {{"trials_per_write", str(1e0)}, {"output_file", "tmp/lj0.xyz"}, {"configuration_index", "0"}}},
-    {"Movie", {{"trials_per_write", str(1e0)}, {"output_file", "tmp/lj1.xyz"}, {"configuration_index", "1"}}},
+    {"Movie", {{"trials_per_write", str(1e0)}, {"output_file", "tmp/lj0.xyz"}, {"config", "config1"}}},
+    {"Movie", {{"trials_per_write", str(1e0)}, {"output_file", "tmp/lj1.xyz"}, {"config", "config2"}}},
     {"CheckEnergy", {{"trials_per_update", str(1e0)}, {"tolerance", str(1e-9)}}},
     {"Run", {{"num_trials", "1e2"}}},
     {"ThermoParams", {{"beta", "100.2"}, {"chemical_potential", "-10."}}},
@@ -552,14 +553,13 @@ TEST(MonteCarlo, two_configs) {
 TEST(MonteCarlo, weight_per_number_fraction_no_particle_type) {
   TRY(
     auto mc = MakeMonteCarlo({{
-      {"Configuration", {{"cubic_side_length", "8"}, {"particle_type0", "../particle/lj.txt"},
-                                                     {"particle_type1", "../particle/lj.txt"}}},
+      {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "pt1:../particle/lj.txt,pt2:../particle/lj.txt"}}},
       {"Potential", {{"Model", "LennardJones"}}},
       {"ThermoParams", {{"beta", "1"}, {"chemical_potential", "1,1"}}},
       {"Metropolis", {{}}},
       {"TrialTranslate", {{"weight_per_number_fraction", "1."}, {"tunable_param", "1."}}},
-      {"TrialTransfer", {{"particle_type", "0"}}},
-      {"TrialTransfer", {{"particle_type", "1"}}},
+      {"TrialTransfer", {{"particle_type", "pt1"}}},
+      {"TrialTransfer", {{"particle_type", "pt2"}}},
       {"Log", {{"trials_per_write", str(1e0)}, {"output_file", "tmp/lj.txt"}}},
       {"Movie", {{"trials_per_write", str(1e0)}, {"output_file", "tmp/lj.xyz"}}},
       {"CheckEnergy", {{"trials_per_update", str(1e0)}, {"tolerance", str(1e-9)}}},
@@ -573,15 +573,14 @@ TEST(MonteCarlo, weight_per_number_fraction_no_particle_type) {
 TEST(MonteCarlo, weight_per_number_fraction_on_add) {
   TRY(
     auto mc = MakeMonteCarlo({{
-      {"Configuration", {{"cubic_side_length", "8"}, {"particle_type0", "../particle/lj.txt"},
-                                                     {"particle_type1", "../particle/lj.txt"}}},
+      {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "pt1:../particle/lj.txt,pt2:../particle/lj.txt"}}},
       {"Potential", {{"Model", "LennardJones"}}},
       {"ThermoParams", {{"beta", "1"}, {"chemical_potential", "1,1"}}},
       {"Metropolis", {{}}},
-      {"TrialTranslate", {{"weight_per_number_fraction", "1."}, {"particle_type", "0"}}},
-      {"TrialTranslate", {{"weight_per_number_fraction", "1."}, {"particle_type", "1"}}},
-      {"TrialTransfer", {{"weight_per_number_fraction", "1."}, {"particle_type", "0"}}},
-      {"TrialTransfer", {{"weight_per_number_fraction", "1."}, {"particle_type", "1"}}},
+      {"TrialTranslate", {{"weight_per_number_fraction", "1."}, {"particle_type", "pt1"}}},
+      {"TrialTranslate", {{"weight_per_number_fraction", "1."}, {"particle_type", "pt2"}}},
+      {"TrialTransfer", {{"weight_per_number_fraction", "1."}, {"particle_type", "pt1"}}},
+      {"TrialTransfer", {{"weight_per_number_fraction", "1."}, {"particle_type", "pt2"}}},
       {"Log", {{"trials_per_write", str(1e0)}, {"output_file", "tmp/lj.txt"}}},
       {"Movie", {{"trials_per_write", str(1e0)}, {"output_file", "tmp/lj.xyz"}}},
       {"CheckEnergy", {{"trials_per_update", str(1e0)}, {"tolerance", str(1e-9)}}},
@@ -594,17 +593,15 @@ TEST(MonteCarlo, weight_per_number_fraction_on_add) {
 
 TEST(MonteCarlo, weight_per_number_fraction) {
   auto mc = MakeMonteCarlo({{
-    {"Configuration", {{"cubic_side_length", "8"}, {"particle_type0", "../particle/lj.txt"},
-                                                   {"particle_type1", "../particle/lj.txt"},
-                                                   {"particle_type2", "../particle/lj.txt"},
-                                                   {"add_particles_of_type2", "1"}}},
+    {"Configuration", {{"cubic_side_length", "8"}, {"particle_type", "pt1:../particle/lj.txt,pt2:../particle/lj.txt,pt3:../particle/lj.txt"},
+                                                   {"add_num_pt3_particles", "1"}}},
     {"Potential", {{"Model", "LennardJones"}}},
     {"ThermoParams", {{"beta", "1"}, {"chemical_potential", "1,1"}}},
     {"Metropolis", {{}}},
-    {"TrialTranslate", {{"weight_per_number_fraction", "1."}, {"particle_type", "0"}, {"number_fraction_exclude_type", "2"}}},
-    {"TrialTranslate", {{"weight_per_number_fraction", "1."}, {"particle_type", "1"}, {"number_fraction_exclude_type", "2"}}},
-    {"TrialTransfer", {{"particle_type", "0"}}},
-    {"TrialTransfer", {{"particle_type", "1"}}},
+    {"TrialTranslate", {{"weight_per_number_fraction", "1."}, {"particle_type", "pt1"}, {"number_fraction_exclude_type", "2"}}},
+    {"TrialTranslate", {{"weight_per_number_fraction", "1."}, {"particle_type", "pt2"}, {"number_fraction_exclude_type", "2"}}},
+    {"TrialTransfer", {{"particle_type", "pt1"}}},
+    {"TrialTransfer", {{"particle_type", "pt1"}}},
     {"Log", {{"trials_per_write", str(1e0)}, {"output_file", "tmp/lj.txt"}}},
     {"Movie", {{"trials_per_write", str(1e0)}, {"output_file", "tmp/lj.xyz"}}},
     {"CheckEnergy", {{"trials_per_update", str(1e0)}, {"tolerance", str(1e-9)}}},
@@ -622,6 +619,30 @@ TEST(MonteCarlo, weight_per_number_fraction) {
     EXPECT_EQ(mc->trial(0).weight(), static_cast<double>(num0)/(num0+num1));
     EXPECT_EQ(mc->trial(1).weight(), static_cast<double>(num1)/(num0+num1));
     DEBUG("num0 " << num0 << " num1 " << num1 << " " << static_cast<double>(num0)/(num0+num1));
+  }
+}
+
+// Check if an multisite particle rotation matches with the anisotropic euler
+TEST(MonteCarlo, rotate2d) {
+  auto mc = MakeMonteCarlo({{
+    //{"RandomMT19937", {{"seed", "123"}}},
+    {"Configuration", {{"side_length", "15,15"}, {"add_num_pt_particles", "1"},
+      {"particle_type", "pt:../plugin/aniso/particle/aniso_tabular2d3l.txt"}}},
+    {"Potential", {{"Model", "LennardJones"}}},
+    {"ThermoParams", {{"beta", "1"}, {"chemical_potential", "1,1"}}},
+    {"Metropolis", {{}}},
+    {"TrialRotate", {{"particle_type", "pt"}, {"tunable_param", "100"}}},
+    {"Movie", {{"trials_per_write", str(1e0)}, {"output_file", "tmp/2dl.xyz"}, {"euler", "true"}}},
+  }}, true);
+  for (int i = 0; i < 2e2; ++i) {
+    mc->attempt();
+    const Site& site0 = mc->configuration().particle(0).site(0);
+    const Site& site1 = mc->configuration().particle(0).site(1);
+    DEBUG("xy:" << site1.position().str() << " "
+      << "x(theta):" << 3.*std::cos(site0.euler().phi()) << " "
+      << "eul:" << site0.euler().phi());
+    //ASSERT(std::abs(3.*std::cos(site0.euler().phi()) - site1.position().coord(0)) < 1e-8, "er");
+    EXPECT_NEAR(3.*std::cos(site0.euler().phi()), site1.position().coord(0), 1e-8);
   }
 }
 

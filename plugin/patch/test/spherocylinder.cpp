@@ -26,7 +26,7 @@ TEST(Spherocylinder, patch_one) {
   config.set_model_param("cutoff", 1, 3.);
   FileXYZ().load("../plugin/patch/test/data/spherocylinder.xyz", &config);
   SquareWell model;
-  model.precompute(config);
+  model.precompute(&config);
   VisitModel visit;
   auto patch = std::make_shared<Spherocylinder>();
   visit.set_inner(patch);
@@ -44,8 +44,8 @@ TEST(Spherocylinder, patch_one) {
 TEST(Spherocylinder, patch_one_2body) {
   System system;
   system.add(MakeConfiguration({{"cubic_side_length", "10"},
-    {"particle_type", "../plugin/patch/particle/spherocylinder.txt"},
-    {"add_particles_of_type0", "2"},
+    {"particle_type", "cyl:../plugin/patch/particle/spherocylinder.txt"},
+    {"add_num_cyl_particles", "2"},
     {"group0", "centers"}, {"centers_site_type", "0"}}));
 
   system.add(MakePotential(MakeSquareWell(),

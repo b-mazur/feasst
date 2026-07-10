@@ -25,12 +25,12 @@
 #include "monte_carlo/include/trial_add.h"
 #include "monte_carlo/include/monte_carlo.h"
 #include "monte_carlo/include/metropolis.h"
-#include "monte_carlo/include/run.h"
-#include "monte_carlo/include/remove.h"
 #include "monte_carlo/include/trial_compute_move.h"
 #include "monte_carlo/include/trial_select_dihedral.h"
 #include "monte_carlo/include/perturb_dihedral.h"
 #include "monte_carlo/include/rosenbluth.h"
+#include "actions/include/run.h"
+#include "actions/include/remove.h"
 #include "steppers/include/log.h"
 #include "steppers/include/tune.h"
 #include "steppers/include/movie.h"
@@ -44,8 +44,9 @@
 #include "steppers/include/energy.h"
 #include "steppers/include/seek_analyze.h"
 #include "cluster/include/energy_map_all.h"
-#include "cluster/include/trial_avb2.h"
 #include "cluster/include/energy_map_neighbor.h"
+#include "cluster/include/energy_map_neighbor_criteria.h"
+#include "cluster/include/trial_avb2.h"
 #include "chain/include/trial_pivot.h"
 #include "chain/include/trial_particle_pivot.h"
 #include "chain/include/trial_crankshaft.h"
@@ -128,7 +129,7 @@ TEST(MonteCarlo, TrialGrow_LONG) {
     MonteCarlo mc;
     //mc.set(MakeRandomMT19937({{"seed", "1635356012"}}));
     mc.add(MakeConfiguration({{"cubic_side_length", str(box_length)},
-                              {"particle_type0", data}}));
+                              {"particle_type", data}}));
     mc.add(MakePotential(MakeLennardJones()));
     mc.add(MakePotential(MakeLongRangeCorrections()));
     mc.add_to_reference(MakePotential(MakeLennardJones()));
@@ -268,8 +269,8 @@ TEST(MonteCarlo, cg7mab2_LONG) {
 TEST(System, Angles2D) {
   MonteCarlo mc;
   mc.add(MakeConfiguration({{"side_length", "6,6"},
-    {"particle_type", "../plugin/chain/particle/heterotrimer2d.txt"},
-    {"add_particles_of_type0", "1"}}));
+    {"particle_type", "trimer:../plugin/chain/particle/heterotrimer2d.txt"},
+    {"add_num_trimer_particles", "1"}}));
   mc.add(MakePotential(MakeLennardJones()));
   mc.set(MakeThermoParams({{"beta", "1"}}));
   mc.set(MakeMetropolis());
@@ -358,38 +359,54 @@ TEST(MonteCarlo, heterotrimer2d_VERY_LONG) {
 }
 
 TEST(MonteCarlo, multisite_neighbors) {
-  MonteCarlo mc;
-  //mc.set(MakeRandomMT19937({{"seed", "123"}}));
-  //mc.set(MakeRandomMT19937({{"seed", "1610132694"}}));
-  mc.add(MakeConfiguration({{"cubic_side_length", "6"},
-                            {"particle_type", "dimer:../particle/dimer.txt"}}));
-  mc.add(MakePotential(MakeLennardJones()));
-  mc.set(MakeThermoParams({{"beta", "1"}, {"chemical_potential", "1"}}));
-  mc.set(MakeMetropolis());
-  mc.add(MakeTrialAdd({{"particle_type", "dimer"}}));
-  mc.run(MakeRun({{"until_num_particles", "5"}}));
-  mc.run(MakeRemove({{"name", "TrialAdd"}}));
-  auto neigh = MakeEnergyMapNeighbor();
-  mc.set(0, MakePotential(MakeLennardJones(), MakeVisitModel(MakeVisitModelInner(neigh))));
-  mc.add_to_reference(MakePotential(MakeLennardJones()));
-  mc.set(MakeMetropolis());
-//  mc.add(MakeTrialTranslate());
-//  mc.add(MakeTrialRotate({{"tunable_param", "50"}}));
-  mc.add(MakeTrialGrow({
-    {{"default_num_steps", "4"}, {"default_reference_index", "0"},
-     {"regrow", "true"}, {"particle_type", "dimer"}, {"site", "D1"}},
-    {{"bond", "true"}, {"mobile_site", "D2"}, {"anchor_site", "D1"}}}));
-  mc.add(MakeTrialGrow({
-    {{"default_num_steps", "4"}, {"default_reference_index", "0"},
-     {"regrow", "true"}, {"particle_type", "dimer"}, {"site", "D2"}},
-    {{"bond", "true"}, {"mobile_site", "D1"}, {"anchor_site", "D2"}}}));
-  EXPECT_EQ(4, mc.trial(0).stage(0).num_steps());
-//  mc.add(MakeLogAndMovie({{"trials_per_write", "100"}, {"output_file", "tmp/dimer"}}));
-  for (int i = 0; i < 1e1; ++i) {
-    mc.attempt(1);
-    neigh->check(mc.configuration());
+  std::vector<std::shared_ptr<EnergyMap> > neighs;
+  neighs.push_back(MakeEnergyMapNeighbor());
+  neighs.push_back(MakeEnergyMapNeighborCriteria());
+  for (auto neigh : neighs) {
+    INFO(neigh->class_name());
+    MonteCarlo mc;
+    //mc.set(MakeRandomMT19937({{"seed", "123"}}));
+    //mc.set(MakeRandomMT19937({{"seed", "1757526510"}}));
+    //mc.set(MakeRandomMT19937({{"seed", "1757524876"}}));
+    mc.add(MakeConfiguration({{"cubic_side_length", "6"},
+                              {"particle_type", "dimer:../particle/dimer.txt"}}));
+    //mc.add(MakePotential(MakeLennardJones()));
+    mc.add(MakeNeighborCriteria({{"maximum_distance", "1.5"}, {"minimum_distance", "1"}}));
+    mc.add(MakePotential(MakeLennardJones(), MakeVisitModel(MakeVisitModelInner(neigh))));
+    mc.add_to_reference(MakePotential(MakeLennardJones()));
+    mc.set(MakeThermoParams({{"beta", "1"}, {"chemical_potential", "1"}}));
+    mc.set(MakeMetropolis());
+    //INFO("change trials per update?");
+    mc.add(MakeCheckEnergy({{"trials_per_update", "1"}, {"decimal_places", "6"}}));
+    mc.add(MakeTrialAdd({{"particle_type", "dimer"}}));
+    //mc.add(MakeTrialTranslate({{"weight", "100"}})); // HWH remove?
+    mc.run(MakeRun({{"until_num_particles", "5"}}));
+    mc.run(MakeRemove({{"name", "TrialAdd"}}));
+  //  auto neigh = MakeEnergyMapNeighbor();
+  //  mc.set(0, MakePotential(MakeLennardJones(), MakeVisitModel(MakeVisitModelInner(neigh))));
+  //  mc.add_to_reference(MakePotential(MakeLennardJones()));
+    mc.set(MakeMetropolis());
+  //  mc.add(MakeTrialTranslate());
+  //  mc.add(MakeTrialRotate({{"tunable_param", "50"}}));
+    mc.add(MakeTrialGrow({
+      {{"default_num_steps", "4"}, {"default_reference_index", "0"},
+       {"regrow", "true"}, {"particle_type", "dimer"}, {"site", "D1"}},
+      {{"bond", "true"}, {"mobile_site", "D2"}, {"anchor_site", "D1"}}}));
+    mc.add(MakeTrialGrow({
+      {{"default_num_steps", "4"}, {"default_reference_index", "0"},
+       {"regrow", "true"}, {"particle_type", "dimer"}, {"site", "D2"}},
+      {{"bond", "true"}, {"mobile_site", "D1"}, {"anchor_site", "D2"}}}));
+    EXPECT_EQ(4, mc.trial(0).stage(0).num_steps());
+  //  mc.add(MakeLogAndMovie({{"trials_per_write", "100"}, {"output_file", "tmp/dimer"}}));
+    for (int i = 0; i < 1e1; ++i) {
+      mc.attempt(1);
+      neigh->check(mc.configuration());
+    }
+    if (mc.system().potential(0).visit_model().inner().is_energy_map_queryable()) {
+      INFO("Check:" << neigh->class_name());
+      EXPECT_NEAR(mc.criteria().current_energy(), neigh->total_energy(), 1e-12);
+    }
   }
-  EXPECT_NEAR(mc.criteria().current_energy(), neigh->total_energy(), 1e-12);
 }
 
 void add_cg4_potential(MonteCarlo * mc, double eps_fc, double eps_fab) {
@@ -767,8 +784,8 @@ TEST(MonteCarlo, single_butane) {
   MonteCarlo mc;
   //mc.set(MakeRandomMT19937({{"seed", "123"}}));
   mc.add(MakeConfiguration({
-    {"particle_type0", "../particle/n-butane.txt"},
-    {"add_particles_of_type0", "1"},
+    {"particle_type", "../particle/n-butane.txt"},
+    {"add_num_0_particles", "1"},
     {"cubic_side_length", "100"}}));
   mc.add(MakePotential(MakeLennardJones(),
                        MakeVisitModelIntra({{"intra_cut",  "3"}})));
@@ -809,7 +826,7 @@ TEST(MonteCarlo, ethane) {
   auto mc = MakeMonteCarlo();
   //mc->set(MakeRandomMT19937({{"seed", "123"}}));
   mc->add(MakeConfiguration({{"cubic_side_length", "30"},
-                             {"particle_type0", "../particle/ethane.txt"},
+                             {"particle_type", "../particle/ethane.txt"},
                              {"cutoff", "15"}}));
   mc->add(MakePotential(MakeLennardJones()));
   mc->add(MakePotential(MakeLongRangeCorrections()));
@@ -847,7 +864,7 @@ TEST(MonteCarlo, water) {
   auto mc = MakeMonteCarlo();
   mc->set(MakeRandomMT19937({{"seed", "123"}}));
   mc->add(MakeConfiguration({{"cubic_side_length", "20"},
-                             {"particle_type0", "../particle/spce.txt"},
+                             {"particle_type", "../particle/spce.txt"},
                              {"cutoff", "10"}}));
   mc->add(MakePotential(MakeLennardJones(),
                         MakeVisitModelCutoffOuter()));
@@ -902,8 +919,6 @@ TEST(MonteCarlo, chainarglist) {
     {"TrialTranslate", {{"tunable_param", "0.2"},
                         {"tunable_target_acceptance", "0.2"}}},
     {"TrialAdd", {{"particle_type", "0"}}},
-    //{"TrialAddMultiple", {{"particle_type0", "0"}, {"particle_type1", "1"}}},
-//    {"TrialAddMultiple", {{"particle_type0", "0"}, {"particle_type1", "1"}, {"reference_index", "0"}}},
     {"TrialGrowFile", {{"grow_file", "../plugin/chain/test/data/dimer_grow_file.txt"}}},
     {"Log", {{"trials_per_write", str(1e2)}, {"output_file", "tmp/lj.txt"}}},
     {"Movie", {{"trials_per_write", str(1e2)}, {"output_file", "tmp/lj.xyz"}}},
@@ -923,9 +938,9 @@ TEST(MonteCarlo, angle_square_well) {
   auto mc = MakeMonteCarlo();
   mc->set(MakeRandomMT19937({{"seed", "123"}}));
   mc->add(MakeConfiguration({{"cubic_side_length", "20"},
-                             {"particle_type0", "../plugin/chain/particle/chain3.txt"},
+                             {"particle_type", "../plugin/chain/particle/chain3.txt"},
                              {"cutoff", "10"},
-                             {"add_particles_of_type0", "1"},
+                             {"add_num_0_particles", "1"},
                              {"group0", "end"},
                              {"end_site_type", "1"}}));
   mc->add(MakePotential(MakeLennardJones(),
@@ -952,8 +967,7 @@ TEST(MonteCarlo, lj_position_swap) {
   auto mc = MakeMonteCarlo();
   mc->set(MakeRandomMT19937({{"seed", "123"}}));
   mc->add(MakeConfiguration({{"cubic_side_length", "8"},
-                             {"particle_type0", "../particle/lj.txt"},
-                             {"particle_type1", "../particle/lj.txt"}}));
+    {"particle_type", "../particle/lj.txt,../particle/lj.txt"}}));
   mc->add(MakePotential(MakeLennardJones()));
   mc->add(MakePotential(MakeLongRangeCorrections()));
   mc->set(MakeThermoParams({{"beta", str(1./1.5)},

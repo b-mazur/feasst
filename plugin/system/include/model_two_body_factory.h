@@ -18,7 +18,7 @@ class ModelTwoBodyFactory : public ModelTwoBody {
  public:
   //@{
   /** @name Arguments
-    - models: comma-separated list of ModelTwoBody.
+    - models: comma-separated list of ModelTwoBody names.
     - model_file: if not empty, file name that lists the ModelTwoBody
       (default: empty).
       The first line is simply ModelTwoBodyFactory.
@@ -52,7 +52,7 @@ class ModelTwoBodyFactory : public ModelTwoBody {
       const int type2,
       const ModelParams& model_params) override;
 
-  void precompute(const Configuration& config) override;
+  void precompute(Configuration * config) override;
 
   // serialize
   std::shared_ptr<Model> create(std::istream& istr) const override {

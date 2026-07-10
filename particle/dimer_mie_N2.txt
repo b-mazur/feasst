@@ -1,10 +1,15 @@
 # FEASST particle file (https://doi.org/10.18434/M3S095)
+# N2 as described in https://doi.org/10.1021/acs.jpcb.5c00536
 #
 # N1 - N2
+#
+# Units
+# Length: Angstrom
+# Energy: Kelvin
 
 Site Properties
 
-N sigma=2.9550 epsilon=49.590 cutoff=12.0 mie_lambda_r=10.109 mie_lambda_a=6.0
+N sigma=2.9550 epsilon=49.590 cutoff=12.0 mie_lambda_r=10.1087 mie_lambda_a=6.0
 
 Sites
 
